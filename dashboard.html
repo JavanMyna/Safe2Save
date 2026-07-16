@@ -7,6 +7,8 @@
   <link rel="icon" type="image/x-icon" href="favicon/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png" />
+  <link rel="manifest" href="favicon/site.webmanifest" />
+  <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png" />
   <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -72,9 +74,28 @@
     </div>
 
     <div class="card" id="projected-card">
-      <h2>Projected Month End</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+        <h2 style="margin:0;">Projected Month End</h2>
+        <label class="toggle-switch" style="flex-shrink:0;">
+          <input type="checkbox" id="future-toggle" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
       <div class="projected-total currency" id="projected-total">RM 0.00</div>
       <div class="projected-meta" id="projected-meta">No balance check-in yet.</div>
+      <div id="future-extra" style="display:none;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+          <div>
+            <div style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">+3 Months</div>
+            <div class="projected-total currency" id="proj-3mo">—</div>
+          </div>
+          <div>
+            <div style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">+1 Year</div>
+            <div class="projected-total currency" id="proj-1yr">—</div>
+          </div>
+        </div>
+        <div style="font-size:0.68rem;color:var(--text-secondary);margin-top:0.5rem;">Rough estimate based on your last 30 days of spending patterns — longer horizons have more uncertainty.</div>
+      </div>
     </div>
 
     <div class="card" id="recent-card">
@@ -386,8 +407,8 @@
           '<div class="swipe-bg"><span class="bg-delete">Delete</span><span class="bg-edit">Edit</span></div>' +
           '<div class="tx-content">' +
             '<div><div>' + U.fmtDateShort(t.occurred_on) + '</div>' +
-            (t.category ? '<span class="spend-category">' + t.category + '</span>' : '') +
-            (t.note ? '<span class="spend-meta"> ' + t.note + '</span>' : '') + '</div>' +
+            (t.category ? '<span class="spend-category">' + U.escHtml(t.category) + '</span>' : '') +
+            (t.note ? '<span class="spend-meta"> ' + U.escHtml(t.note) + '</span>' : '') + '</div>' +
             '<div style="display:flex;align-items:center;gap:0.5rem;">' +
               '<div class="tx-actions">' +
                 '<button class="tx-action-btn" data-edit="' + t.id + '" title="Edit">&#9998;</button>' +
@@ -423,7 +444,7 @@
       for (var i = 0; i < items.length; i++) {
         var item = items[i];
         while (item.next_occurrence <= today) {
-          inserts.push({ user_id: userId, amount: item.amount, type: item.type, category: item.category, note: item.note, occurred_on: item.next_occurrence });
+          inserts.push({ user_id: userId, amount: item.amount, type: item.type, category: item.category, note: item.note, occurred_on: item.next_occurrence, recurring_transaction_id: item.id });
           var next = new Date(item.next_occurrence + "T00:00:00");
           if (item.frequency === "daily") next.setDate(next.getDate() + 1);
           else if (item.frequency === "weekly") next.setDate(next.getDate() + 7);
@@ -438,6 +459,95 @@
       }
       for (var k = 0; k < updates.length; k++) {
         try { await db.from("recurring_transactions").update({ next_occurrence: updates[k].next_occurrence }).eq("id", updates[k].id); } catch(e) {}
+      }
+    }
+
+    function advanceDate(d, freq) {
+      var n = new Date(d + "T00:00:00");
+      if (freq === "daily") n.setDate(n.getDate() + 1);
+      else if (freq === "weekly") n.setDate(n.getDate() + 7);
+      else if (freq === "monthly") n.setMonth(n.getMonth() + 1);
+      return n.toISOString().substring(0, 10);
+    }
+
+    function projectBalance(fromBalance, targetDate) {
+      var projected = parseFloat(fromBalance);
+      var today = U.todayStr();
+      if (window._allRecurring) {
+        for (var i = 0; i < window._allRecurring.length; i++) {
+          var r = window._allRecurring[i];
+          var d = r.next_occurrence;
+          var safety = 0;
+          while (d <= targetDate && safety < 500) {
+            projected += (r.type === "income" ? parseFloat(r.amount) : -parseFloat(r.amount));
+            d = advanceDate(d, r.frequency);
+            safety++;
+          }
+        }
+      }
+      return projected;
+    }
+
+    async function computeNetDailyTrend() {
+      var since = U.daysAgoStr(30);
+      var { data: tx } = await db.from("transactions").select("*").eq("user_id", userId).gte("occurred_on", since).order("occurred_on", { ascending: true });
+      if (!tx || tx.length === 0) return 0;
+      var dates = {};
+      for (var i = 0; i < tx.length; i++) {
+        var t = tx[i];
+        if (t.recurring_transaction_id) continue; // exclude catch-up rows
+        var d = t.occurred_on;
+        if (!dates[d]) dates[d] = { exp: 0, inc: 0 };
+        if (t.type === "income") dates[d].inc += parseFloat(t.amount);
+        else dates[d].exp += parseFloat(t.amount);
+      }
+      var days = Object.keys(dates).length;
+      if (days === 0) return 0;
+      var totalNet = 0;
+      Object.keys(dates).forEach(function(d) { totalNet += dates[d].inc - dates[d].exp; });
+      return totalNet / days;
+    }
+
+    var futureMode = false;
+
+    async function renderProjections() {
+      var { data: checkins } = await db.from("balance_checkins").select("*").eq("user_id", userId).order("checked_at", { ascending: false }).limit(1);
+      var { data: recurring } = await db.from("recurring_transactions").select("*").eq("user_id", userId).eq("active", true).order("next_occurrence", { ascending: true });
+      window._allRecurring = recurring || [];
+      var metaEl = document.getElementById("projected-meta");
+      var totalEl = document.getElementById("projected-total");
+      var extraEls = document.getElementById("future-extra");
+      if (!checkins || checkins.length === 0) {
+        totalEl.textContent = "RM 0.00"; totalEl.className = "projected-total currency";
+        metaEl.textContent = "No balance check-in yet — go to Check Balance first.";
+        if (extraEls) extraEls.style.display = "none";
+        return;
+      }
+      var latest = checkins[0];
+      var balance = parseFloat(latest.balance);
+      var netTrend = await computeNetDailyTrend();
+      var today = U.todayStr();
+      var monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().substring(0, 10);
+      var plus3mo = new Date(new Date().getFullYear(), new Date().getMonth() + 3, 0).toISOString().substring(0, 10);
+      var plus1yr = new Date(new Date().getFullYear() + 1, new Date().getMonth(), new Date().getDate()).toISOString().substring(0, 10);
+
+      var projMonth = projectBalance(balance, monthEnd);
+      totalEl.textContent = U.fmtMYR(projMonth);
+      totalEl.className = "projected-total currency " + (projMonth >= 0 ? "positive" : "negative");
+      metaEl.textContent = "Based on check-in from " + U.fmtDate(latest.checked_at) + " + recurring items through month end.";
+
+      if (futureMode && extraEls) {
+        extraEls.style.display = "";
+        var daysTo3mo = Math.ceil((new Date(plus3mo) - new Date(today)) / 86400000);
+        var daysTo1yr = Math.ceil((new Date(plus1yr) - new Date(today)) / 86400000);
+        var proj3mo = projectBalance(balance, plus3mo) + netTrend * daysTo3mo;
+        var proj1yr = projectBalance(balance, plus1yr) + netTrend * daysTo1yr;
+        document.getElementById("proj-3mo").textContent = U.fmtMYR(proj3mo);
+        document.getElementById("proj-3mo").className = "projected-total currency " + (proj3mo >= 0 ? "positive" : "negative");
+        document.getElementById("proj-1yr").textContent = U.fmtMYR(proj1yr);
+        document.getElementById("proj-1yr").className = "projected-total currency " + (proj1yr >= 0 ? "positive" : "negative");
+      } else if (extraEls) {
+        extraEls.style.display = "none";
       }
     }
 
@@ -473,37 +583,6 @@
       document.getElementById("budget-daily").className = "stat-value " + (dailySafe > 0 ? "stat-neutral" : "stat-negative");
     }
 
-    async function renderProjectedMonthEnd() {
-      var { data: checkins } = await db.from("balance_checkins").select("*").eq("user_id", userId).order("checked_at", { ascending: false }).limit(1);
-      var { data: recurring } = await db.from("recurring_transactions").select("*").eq("user_id", userId).eq("active", true).order("next_occurrence", { ascending: true });
-      var metaEl = document.getElementById("projected-meta");
-      var totalEl = document.getElementById("projected-total");
-      if (!checkins || checkins.length === 0) {
-        totalEl.textContent = "RM 0.00"; totalEl.className = "projected-total currency";
-        metaEl.textContent = "No balance check-in yet — go to Check Balance first."; return;
-      }
-      var latest = checkins[0];
-      var projected = parseFloat(latest.balance);
-      var monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().substring(0, 10);
-      var today = U.todayStr();
-      if (recurring) {
-        for (var i = 0; i < recurring.length; i++) {
-          var r = recurring[i];
-          var d = r.next_occurrence;
-          while (d <= monthEnd) {
-            projected += (r.type === "income" ? parseFloat(r.amount) : -parseFloat(r.amount));
-            var nn = new Date(d + "T00:00:00");
-            if (r.frequency === "daily") nn.setDate(nn.getDate() + 1);
-            else if (r.frequency === "weekly") nn.setDate(nn.getDate() + 7);
-            else if (r.frequency === "monthly") nn.setMonth(nn.getMonth() + 1);
-            d = nn.toISOString().substring(0, 10);
-            if (d <= today) break;
-          }
-        }
-      }
-      totalEl.textContent = U.fmtMYR(projected);
-      totalEl.className = "projected-total currency " + (projected >= 0 ? "positive" : "negative");
-      metaEl.textContent = "Based on check-in from " + U.fmtDate(latest.checked_at) + " + recurring items through month end.";
     }
 
     async function reloadAll() {
@@ -526,7 +605,7 @@
       renderFilterChips();
       filterAndRender();
       renderBudgetPace();
-      renderProjectedMonthEnd();
+      renderProjections();
     }
 
     function switchOverview(view) {
@@ -576,6 +655,11 @@
       updateClearFilters();
       filterAndRender();
       if (donutChart) { renderDonutChart(); }
+    });
+
+    document.getElementById("future-toggle").addEventListener("change", function() {
+      futureMode = this.checked;
+      renderProjections();
     });
 
     loadDashboard();

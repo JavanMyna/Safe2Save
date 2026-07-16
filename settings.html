@@ -7,6 +7,8 @@
   <link rel="icon" type="image/x-icon" href="favicon/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png" />
+  <link rel="manifest" href="favicon/site.webmanifest" />
+  <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png" />
   <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -70,6 +72,17 @@
         <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">
           Leave empty to disable the Budget Pace card on the dashboard. Per-category budgets are not yet supported.
         </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Data Export</h2>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+        Download all your transactions for backup or analysis.
+      </p>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-outline" id="export-csv">Export CSV</button>
+        <button class="btn btn-outline" id="export-json">Export JSON</button>
       </div>
     </div>
 
@@ -174,6 +187,27 @@
       }
 
       U.toast("Settings saved!", true);
+    });
+
+    document.getElementById("export-csv").addEventListener("click", async function() {
+      this.textContent = "Loading...";
+      var { data } = await db.from("transactions").select("*").eq("user_id", userId).order("occurred_on", { ascending: false });
+      if (!data || !data.length) { U.toast("No transactions to export."); this.textContent = "Export CSV"; return; }
+      var csv = "date,type,category,amount,note\n";
+      data.forEach(function(t) { csv += t.occurred_on + "," + t.type + "," + (t.category || "") + "," + t.amount + "," + '"' + (t.note || "").replace(/"/g, '""') + '"\n'; });
+      var blob = new Blob([csv], { type: "text/csv" });
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "safe-to-save-export.csv"; a.click();
+      this.textContent = "Export CSV";
+    });
+
+    document.getElementById("export-json").addEventListener("click", async function() {
+      this.textContent = "Loading...";
+      var { data } = await db.from("transactions").select("*").eq("user_id", userId).order("occurred_on", { ascending: false });
+      if (!data || !data.length) { U.toast("No transactions to export."); this.textContent = "Export JSON"; return; }
+      var json = JSON.stringify(data, null, 2);
+      var blob = new Blob([json], { type: "application/json" });
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "safe-to-save-export.json"; a.click();
+      this.textContent = "Export JSON";
     });
 
     document.getElementById("logout-btn").addEventListener("click", async () => {

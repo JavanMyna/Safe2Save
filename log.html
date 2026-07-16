@@ -7,6 +7,8 @@
   <link rel="icon" type="image/x-icon" href="favicon/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png" />
+  <link rel="manifest" href="favicon/site.webmanifest" />
+  <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png" />
   <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -194,7 +196,7 @@
       for (var i = 0; i < cats.length; i++) {
         var c = cats[i];
         var sel = selectedCategory === c.name ? " selected" : "";
-        html += '<button class="cat-chip' + sel + '" data-cat="' + c.name + '"><span class="cat-emoji">' + c.emoji + '</span>' + c.name + '</button>';
+        html += '<button class="cat-chip' + sel + '" data-cat="' + c.name + '"><span class="cat-emoji">' + c.emoji + '</span>' + U.escHtml(c.name) + '</button>';
       }
       html += '<button class="cat-chip cat-chip-add" id="cat-add">+</button>';
       container.innerHTML = html;
@@ -263,6 +265,7 @@
         renderChips();
       }
 
+      renderChips();
       loadToday();
     }
 
@@ -289,7 +292,7 @@
       totalEl.style.display = "";
       container.innerHTML = data.map(function(t) {
         var isIncome = t.type === "income";
-        return '<div class="spend-row"><div>' + (t.category ? '<span class="spend-category">' + t.category + '</span>' : "") + (t.note ? '<span class="spend-meta">' + t.note + '</span>' : "") + '</div><div class="spend-amount currency' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '−') + ' ' + U.fmtMYR(t.amount) + '</div></div>';
+        return '<div class="spend-row"><div>' + (t.category ? '<span class="spend-category">' + U.escHtml(t.category) + '</span>' : "") + (t.note ? '<span class="spend-meta">' + U.escHtml(t.note) + '</span>' : "") + '</div><div class="spend-amount currency' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '−') + ' ' + U.fmtMYR(t.amount) + '</div></div>';
       }).join("");
     }
 

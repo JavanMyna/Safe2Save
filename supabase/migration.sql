@@ -14,6 +14,8 @@
 --   alter table transactions add column type text not null default 'expense' check (type in ('expense','income'));
 -- Phase 3: recurring transactions + budget pace
 --   alter table settings add column monthly_budget numeric;
+-- Phase 4: recurring link + future projections
+--   alter table transactions add column recurring_transaction_id uuid references recurring_transactions(id);
 -- ============================================================
 
 -- 1. Profiles table
