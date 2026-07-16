@@ -15,10 +15,11 @@ const AUTH = (() => {
     });
 
     if (error) {
-      if (error.message.includes("already registered") || error.message.includes("already exists")) {
+      const msg = error.message || error.msg || error.error_description || JSON.stringify(error);
+      if (msg.includes("already registered") || msg.includes("already exists") || msg.includes("already been registered")) {
         throw new Error("Username already taken.");
       }
-      throw error;
+      throw new Error(msg || "Signup failed. Check your credentials.");
     }
 
     return data;
@@ -31,10 +32,11 @@ const AUTH = (() => {
     });
 
     if (error) {
-      if (error.message.includes("Invalid login") || error.message.includes("invalid")) {
+      const msg = error.message || error.msg || error.error_description || JSON.stringify(error);
+      if (msg.includes("Invalid login") || msg.includes("invalid")) {
         throw new Error("Invalid username or password.");
       }
-      throw error;
+      throw new Error(msg || "Login failed. Check your credentials.");
     }
 
     return data;
