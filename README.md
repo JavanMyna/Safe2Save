@@ -13,7 +13,11 @@ Most budgeting apps assume you have a fixed payday and lock the good features be
 Safe-to-Save is the result. It's a static site backed by Supabase, so there's no vendor lock-in, no subscription, and the data model is simple enough that I (or anyone else) can read straight through the code.
 
 ---
+## Recommended Device
+** Mobile Recommended **
+This project was designed primarily for mobile devices. While it works on desktop, the intended experience is on a phone.
 
+---
 ## Features
 
 **Dashboard**
