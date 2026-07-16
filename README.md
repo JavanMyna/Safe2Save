@@ -17,21 +17,26 @@ Safe-to-Save is the result. It's a static site backed by Supabase, so there's no
 ## Features
 
 **Dashboard**
+<img width="1366" height="634" alt="image" src="https://github.com/user-attachments/assets/a21bef94-6e27-47ab-a154-d2137c52260a" />
 - Spending vs. savings overview over 7 days / 30 days / 12 months
 - Bar chart of daily spend and a category breakdown donut chart
 - Projected month-end balance based on your latest check-in plus recurring items
 - Searchable, filterable transaction history
 
+
 **Log**
+<img width="1366" height="634" alt="image" src="https://github.com/user-attachments/assets/e5b4ca96-6915-4624-9ea5-26cfc2cc2787" />
 - Quick expense/income entry with category tagging (Food, Transport, Bills, Shopping, Entertainment, Health, Other, and custom categories you add yourself)
 - Optional recurring transactions
 - Same-day transaction summary as you log
 
 **Check Balance (the core feature)**
+<img width="1366" height="634" alt="image" src="https://github.com/user-attachments/assets/f343130e-ffb9-41be-bc38-eca9c27c1e33" />
 - Enter your current bank balance and get a calculated "safe to save" amount — how much you can move into savings without eating into your near-term runway
 - Full check-in history so you can see how that number has moved over time
 
 **Settings**
+<img width="1366" height="635" alt="image" src="https://github.com/user-attachments/assets/6573f5c6-2dc2-41fc-ac55-1fda5fa2bbf1" />
 - Configurable runway (days of expenses to keep as a buffer) and starting daily spend estimate
 - Optional monthly budget pacing
 - Export all transactions to CSV or JSON — your data, your file, any time
