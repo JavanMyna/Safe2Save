@@ -22,9 +22,18 @@ const AUTH = (() => {
       throw new Error(msg || "Signup failed. Check your credentials.");
     }
 
+    if (data.session) {
+      await db.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+    }
+
     if (data.user) {
-      await db.from("profiles").upsert({ id: data.user.id, username: username.trim() }).select();
-      await db.from("settings").upsert({ user_id: data.user.id, runway_days: 14, starting_daily_estimate: 0 }).select();
+      const { error: pe } = await db.from("profiles").upsert({ id: data.user.id, username: username.trim() });
+      if (pe) console.warn("Profile upsert:", pe.message);
+      const { error: se } = await db.from("settings").upsert({ user_id: data.user.id, runway_days: 14, starting_daily_estimate: 0 });
+      if (se) console.warn("Settings upsert:", se.message);
     }
 
     return data;
