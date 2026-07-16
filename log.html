@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Safe-to-Save — Log Transaction</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <nav class="nav">
+    <span class="nav-title">Log Transaction</span>
+    <a href="dashboard.html" class="nav-btn">Done</a>
+  </nav>
+
+  <main class="page">
+    <div class="card">
+      <div class="form-group">
+        <label for="amount">Amount (RM) *</label>
+        <input type="number" id="amount" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required autofocus />
+      </div>
+
+      <div class="form-group">
+        <label for="category">Category</label>
+        <input type="text" id="category" list="category-list" placeholder="e.g. Food, Transport" autocomplete="off" />
+        <datalist id="category-list">
+          <option value="Food" />
+          <option value="Transport" />
+          <option value="Groceries" />
+          <option value="Shopping" />
+          <option value="Bills" />
+          <option value="Entertainment" />
+          <option value="Health" />
+          <option value="Other" />
+        </datalist>
+      </div>
+
+      <div class="form-group">
+        <label for="date">Date</label>
+        <input type="date" id="date" />
+      </div>
+
+      <div class="form-group">
+        <label for="note">Note (optional)</label>
+        <textarea id="note" placeholder="What was this for?"></textarea>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="submit-btn">Save Transaction</button>
+    </div>
+
+    <div class="card" id="today-card">
+      <h2>Today's Transactions</h2>
+      <div class="empty-state" id="today-empty">
+        <p>Nothing logged today yet.</p>
+      </div>
+      <div id="today-list"></div>
+      <div id="today-total" style="display:none; text-align:right; font-weight:700; padding-top:0.5rem; border-top:1px solid var(--border);"></div>
+    </div>
+  </main>
+
+  <nav class="tab-bar">
+    <a href="dashboard.html">
+      <span class="tab-icon">&#9776;</span> Dashboard
+    </a>
+    <a href="log.html" class="active">
+      <span class="tab-icon">+</span> Log
+    </a>
+    <a href="checkin.html">
+      <span class="tab-icon">&#10003;</span> Check
+    </a>
+    <a href="settings.html">
+      <span class="tab-icon">&#9881;</span> Settings
+    </a>
+  </nav>
+
+  <script>
+    let userId = null;
+
+    async function init() {
+      const session = await AUTH.requireAuth();
+      if (!session) return;
+      userId = session.user.id;
+      document.getElementById("date").value = U.todayStr();
+      loadToday();
+    }
+
+    async function loadToday() {
+      const today = U.todayStr();
+      const { data, error } = await db
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("occurred_on", today)
+        .order("created_at", { ascending: false });
+
+      const container = document.getElementById("today-list");
+      const empty = document.getElementById("today-empty");
+      const totalEl = document.getElementById("today-total");
+
+      if (error || !data || data.length === 0) {
+        container.innerHTML = "";
+        empty.style.display = "";
+        totalEl.style.display = "none";
+        return;
+      }
+
+      empty.style.display = "none";
+      const total = data.reduce((s, t) => s + parseFloat(t.amount), 0);
+      totalEl.textContent = "Total: " + U.fmtMYR(total);
+      totalEl.style.display = "";
+
+      container.innerHTML = data
+        .map(
+          (t) => `
+        <div class="spend-row">
+          <div>
+            ${t.category ? `<span class="spend-category">${t.category}</span>` : ""}
+            ${t.note ? `<span class="spend-meta">${t.note}</span>` : ""}
+          </div>
+          <div class="spend-amount currency">${U.fmtMYR(t.amount)}</div>
+        </div>`
+        )
+        .join("");
+    }
+
+    document.getElementById("submit-btn").addEventListener("click", async () => {
+      const amountStr = document.getElementById("amount").value;
+      const category = document.getElementById("category").value.trim();
+      const date = document.getElementById("date").value || U.todayStr();
+      const note = document.getElementById("note").value.trim();
+
+      const amount = parseFloat(amountStr);
+      if (!amountStr || isNaN(amount) || amount <= 0) {
+        return U.toast("Please enter a valid amount.");
+      }
+
+      const { error } = await db.from("transactions").insert({
+        user_id: userId,
+        amount,
+        category: category || null,
+        note: note || null,
+        occurred_on: date,
+      });
+
+      if (error) {
+        U.toast("Failed to save transaction.");
+        return;
+      }
+
+      U.toast("Saved!", true);
+      document.getElementById("amount").value = "";
+      document.getElementById("category").value = "";
+      document.getElementById("note").value = "";
+      document.getElementById("amount").focus();
+      loadToday();
+    });
+
+    init();
+  </script>
+</body>
+</html>

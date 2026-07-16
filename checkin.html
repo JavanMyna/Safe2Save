@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Safe-to-Save — Check Balance</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <nav class="nav">
+    <span class="nav-title">Check Balance</span>
+    <a href="dashboard.html" class="nav-btn">Done</a>
+  </nav>
+
+  <main class="page">
+    <div class="card">
+      <h2>Enter your current balance</h2>
+      <div class="form-group">
+        <label for="balance-input">Bank balance (RM)</label>
+        <input type="number" id="balance-input" inputmode="decimal" step="0.01" min="0" placeholder="0.00" autofocus />
+      </div>
+      <button class="btn btn-primary btn-block" id="check-btn">Calculate Safe-to-Save</button>
+    </div>
+
+    <div class="card" id="result-card" style="display:none;">
+      <h2>Recommendation</h2>
+
+      <div class="result-grid" id="result-grid">
+        <div class="result-item">
+          <div class="result-label">Avg Daily Spend</div>
+          <div class="result-value currency" id="res-avg">—</div>
+        </div>
+        <div class="result-item">
+          <div class="result-label">Floor (keep)</div>
+          <div class="result-value currency" id="res-floor">—</div>
+        </div>
+        <div class="result-item highlight">
+          <div class="result-label">Safe to Save</div>
+          <div class="result-value currency" id="res-safe">—</div>
+        </div>
+      </div>
+
+      <div class="result-summary" id="result-summary"></div>
+    </div>
+
+    <div class="card" id="history-card">
+      <h2>Check-in History</h2>
+      <div class="empty-state" id="history-empty">
+        <p>No balance checks yet.</p>
+      </div>
+      <div id="history-list"></div>
+    </div>
+  </main>
+
+  <nav class="tab-bar">
+    <a href="dashboard.html">
+      <span class="tab-icon">&#9776;</span> Dashboard
+    </a>
+    <a href="log.html">
+      <span class="tab-icon">+</span> Log
+    </a>
+    <a href="checkin.html" class="active">
+      <span class="tab-icon">&#10003;</span> Check
+    </a>
+    <a href="settings.html">
+      <span class="tab-icon">&#9881;</span> Settings
+    </a>
+  </nav>
+
+  <script>
+    let userId = null;
+
+    async function init() {
+      const session = await AUTH.requireAuth();
+      if (!session) return;
+      userId = session.user.id;
+      loadHistory();
+    }
+
+    async function getSettings() {
+      const { data } = await db
+        .from("settings")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+      return {
+        runway_days: data?.runway_days ?? 14,
+        starting_daily_estimate: parseFloat(data?.starting_daily_estimate ?? 0),
+      };
+    }
+
+    async function computeRecommendation(balance) {
+      const settings = await getSettings();
+      const runwayDays = settings.runway_days;
+
+      const { data: allTx } = await db
+        .from("transactions")
+        .select("occurred_on")
+        .eq("user_id", userId)
+        .order("occurred_on", { ascending: true });
+
+      if (!allTx || allTx.length === 0) {
+        return {
+          avgDailySpend: settings.starting_daily_estimate,
+          floor: settings.starting_daily_estimate * runwayDays,
+          safeToSave: Math.max(0, balance - settings.starting_daily_estimate * runwayDays),
+          runwayDays,
+        };
+      }
+
+      const allDates = [...new Set(allTx.map((t) => t.occurred_on))].sort();
+      const historyDays = U.daysBetween(allDates[0], U.todayStr()) + 1;
+
+      const windowSize = historyDays < 14 ? 14 : 30;
+      const cutoff = U.daysAgoStr(windowSize);
+
+      const { data: transactions } = await db
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .gte("occurred_on", cutoff)
+        .order("occurred_on", { ascending: true });
+
+      const windowDates = [...new Set((transactions || []).map((t) => t.occurred_on))];
+      const uniqueDays = windowDates.length;
+
+      let avgDailySpend;
+      if (uniqueDays < 5) {
+        avgDailySpend = settings.starting_daily_estimate > 0
+          ? settings.starting_daily_estimate
+          : (transactions || []).reduce((s, t) => s + parseFloat(t.amount), 0) / Math.max(uniqueDays, 1);
+      } else {
+        const total = (transactions || []).reduce((s, t) => s + parseFloat(t.amount), 0);
+        avgDailySpend = total / windowSize;
+      }
+
+      const floor = avgDailySpend * runwayDays;
+      const safeToSave = Math.max(0, balance - floor);
+
+      return { avgDailySpend, floor, safeToSave, runwayDays };
+    }
+
+    document.getElementById("check-btn").addEventListener("click", async () => {
+      const raw = document.getElementById("balance-input").value;
+      const balance = parseFloat(raw);
+      if (!raw || isNaN(balance) || balance < 0) {
+        return U.toast("Please enter a valid balance.");
+      }
+
+      document.getElementById("check-btn").disabled = true;
+      document.getElementById("check-btn").textContent = "Calculating...";
+
+      try {
+        const rec = await computeRecommendation(balance);
+
+        document.getElementById("res-avg").textContent = U.fmtMYR(rec.avgDailySpend);
+        document.getElementById("res-floor").textContent = U.fmtMYR(rec.floor);
+        document.getElementById("res-safe").textContent = U.fmtMYR(rec.safeToSave);
+
+        document.getElementById("result-summary").innerHTML =
+          rec.safeToSave > 0
+            ? `Keep at least <strong>${U.fmtMYR(rec.floor)}</strong> for the next <strong>${rec.runwayDays} days</strong>. <strong>${U.fmtMYR(rec.safeToSave)}</strong> is safe to move to savings.`
+            : `Your balance of <strong>${U.fmtMYR(balance)}</strong> is below the recommended floor of <strong>${U.fmtMYR(rec.floor)}</strong>. Nothing is safe to save right now.`;
+
+        document.getElementById("result-card").style.display = "";
+
+        await db.from("balance_checkins").insert({
+          user_id: userId,
+          balance,
+          avg_daily_spend: rec.avgDailySpend,
+          floor_amount: rec.floor,
+          safe_to_save: rec.safeToSave,
+        });
+
+        loadHistory();
+      } catch (err) {
+        U.toast("Something went wrong. Try again.");
+      }
+
+      document.getElementById("check-btn").disabled = false;
+      document.getElementById("check-btn").textContent = "Calculate Safe-to-Save";
+    });
+
+    async function loadHistory() {
+      const { data } = await db
+        .from("balance_checkins")
+        .select("*")
+        .eq("user_id", userId)
+        .order("checked_at", { ascending: false })
+        .limit(10);
+
+      const container = document.getElementById("history-list");
+      const empty = document.getElementById("history-empty");
+
+      if (!data || data.length === 0) {
+        container.innerHTML = "";
+        empty.style.display = "";
+        return;
+      }
+
+      empty.style.display = "none";
+      container.innerHTML = data
+        .map(
+          (c) => `
+        <div class="history-row">
+          <div>
+            <div>Balance: <strong>${U.fmtMYR(c.balance)}</strong></div>
+            <div class="history-date">${U.fmtDate(c.checked_at)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:600;color:var(--green-dark);">${U.fmtMYR(c.safe_to_save)}</div>
+            <div style="font-size:0.7rem;color:var(--text-secondary);">safe to save</div>
+          </div>
+        </div>`
+        )
+        .join("");
+    }
+
+    // Enter key submits
+    document.getElementById("balance-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("check-btn").click();
+    });
+
+    init();
+  </script>
+</body>
+</html>

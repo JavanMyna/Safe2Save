@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Safe-to-Save — Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <nav class="nav">
+    <span class="nav-title">Safe-to-Save</span>
+    <a href="settings.html" class="nav-btn">Settings</a>
+  </nav>
+
+  <main class="page">
+    <div class="card">
+      <h2>Spending Overview</h2>
+      <div class="chart-tabs">
+        <button class="chart-tab active" data-window="7">7 days</button>
+        <button class="chart-tab" data-window="30">30 days</button>
+        <button class="chart-tab" data-window="365">12 months</button>
+      </div>
+      <div class="chart-total currency" id="chart-total">RM 0.00</div>
+      <div class="chart-label" id="chart-label">Last 7 days</div>
+      <div class="chart-wrap"><canvas id="spend-chart"></canvas></div>
+    </div>
+
+    <div class="card" id="recent-card">
+      <h2>Recent Transactions</h2>
+      <div class="empty-state" id="recent-empty">
+        <div class="empty-icon">-</div>
+        <p>No transactions yet. Tap + to log your first.</p>
+      </div>
+      <div id="recent-list"></div>
+    </div>
+  </main>
+
+  <button class="fab" onclick="window.location.href='log.html'" title="Log transaction">+</button>
+
+  <nav class="tab-bar">
+    <a href="dashboard.html" class="active">
+      <span class="tab-icon">&#9776;</span> Dashboard
+    </a>
+    <a href="log.html">
+      <span class="tab-icon">+</span> Log
+    </a>
+    <a href="checkin.html">
+      <span class="tab-icon">&#10003;</span> Check
+    </a>
+    <a href="settings.html">
+      <span class="tab-icon">&#9881;</span> Settings
+    </a>
+  </nav>
+
+  <script>
+    let chart = null;
+    let currentWindow = 7;
+
+    function groupByDay(transactions) {
+      const map = {};
+      for (const t of transactions) {
+        const day = t.occurred_on;
+        if (!map[day]) map[day] = 0;
+        map[day] += parseFloat(t.amount);
+      }
+      return map;
+    }
+
+    function buildLabels(windowDays) {
+      const labels = [];
+      for (let i = windowDays - 1; i >= 0; i--) {
+        labels.push(U.daysAgoStr(i));
+      }
+      return labels;
+    }
+
+    function renderChart(transactions) {
+      const grouped = groupByDay(transactions);
+      const labels = buildLabels(currentWindow);
+      const data = labels.map((d) => grouped[d] || 0);
+      const total = data.reduce((a, b) => a + b, 0);
+
+      document.getElementById("chart-total").textContent = U.fmtMYR(total);
+      const labelMap = { 7: "Last 7 days", 30: "Last 30 days", 365: "Last 12 months" };
+      document.getElementById("chart-label").textContent = labelMap[currentWindow];
+
+      const ctx = document.getElementById("spend-chart").getContext("2d");
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Daily spend",
+              data,
+              backgroundColor: "#c8e6c9",
+              borderColor: "#2e7d32",
+              borderWidth: 1,
+              borderRadius: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => U.fmtMYR(ctx.raw),
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                maxTicksLimit: currentWindow <= 7 ? 7 : currentWindow <= 30 ? 10 : 12,
+                callback: function (val, idx) {
+                  const d = this.getLabelForValue(val);
+                  if (!d) return "";
+                  const parts = d.split("-");
+                  return parts[2] + "/" + parts[1];
+                },
+              },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (val) => U.fmtMYR(val),
+              },
+            },
+          },
+        },
+      });
+    }
+
+    function renderRecent(transactions) {
+      const container = document.getElementById("recent-list");
+      const empty = document.getElementById("recent-empty");
+
+      if (!transactions || transactions.length === 0) {
+        container.innerHTML = "";
+        empty.style.display = "";
+        return;
+      }
+
+      empty.style.display = "none";
+      const sorted = [...transactions].sort(
+        (a, b) => new Date(b.occurred_on) - new Date(a.occurred_on)
+      );
+      const latest = sorted.slice(0, 10);
+
+      container.innerHTML = latest
+        .map(
+          (t) => `
+        <div class="spend-row">
+          <div>
+            <div>${U.fmtDateShort(t.occurred_on)}</div>
+            ${t.category ? `<span class="spend-category">${t.category}</span>` : ""}
+            ${t.note ? `<span class="spend-meta">${t.note}</span>` : ""}
+          </div>
+          <div class="spend-amount currency">${U.fmtMYR(t.amount)}</div>
+        </div>`
+        )
+        .join("");
+    }
+
+    async function loadDashboard() {
+      const session = await AUTH.requireAuth();
+      if (!session) return;
+
+      const userId = session.user.id;
+      const since = U.daysAgoStr(currentWindow);
+
+      const [{ data: chartTx, error }, { data: recentTx }] = await Promise.all([
+        db.from("transactions").select("*").eq("user_id", userId).gte("occurred_on", since).order("occurred_on", { ascending: true }),
+        db.from("transactions").select("*").eq("user_id", userId).order("occurred_on", { ascending: false }).limit(20),
+      ]);
+
+      if (error) {
+        U.toast("Failed to load transactions.");
+        return;
+      }
+
+      renderChart(chartTx || []);
+      renderRecent(recentTx || []);
+    }
+
+    document.querySelectorAll(".chart-tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".chart-tab").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentWindow = parseInt(btn.dataset.window);
+        loadDashboard();
+      });
+    });
+
+    loadDashboard();
+  </script>
+</body>
+</html>

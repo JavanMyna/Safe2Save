@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Safe-to-Save — Settings</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <nav class="nav">
+    <span class="nav-title">Settings</span>
+    <a href="dashboard.html" class="nav-btn">Done</a>
+  </nav>
+
+  <main class="page">
+    <div class="card">
+      <h2>Recommendation Settings</h2>
+
+      <div class="form-group">
+        <label for="runway-days">Runway days</label>
+        <input type="number" id="runway-days" inputmode="numeric" min="1" max="365" step="1" value="14" />
+        <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">
+          How many days of expenses you want to keep as a safety buffer.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label for="starting-estimate">Starting daily estimate (RM)</label>
+        <input type="number" id="starting-estimate" inputmode="decimal" min="0" step="0.01" value="0" />
+        <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">
+          Used as the daily spend estimate until you have at least 5 days of transaction history.
+        </p>
+      </div>
+
+      <button class="btn btn-primary btn-block mb-1" id="save-btn">Save Settings</button>
+    </div>
+
+    <div class="card">
+      <h2>About Safe-to-Save</h2>
+      <p style="font-size:0.85rem;color:var(--text-secondary);">
+        A personal finance tool for people with irregular income. Instead of counting down to a fixed payday,
+        it calculates how much of your current bank balance is safe to move into savings based on your own
+        spending patterns.
+      </p>
+    </div>
+
+    <div class="danger-zone">
+      <h3>Sign Out</h3>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+        You'll be signed out and returned to the login screen.
+      </p>
+      <button class="btn btn-block" id="logout-btn" style="background:var(--red);color:white;">Sign Out</button>
+    </div>
+  </main>
+
+  <nav class="tab-bar">
+    <a href="dashboard.html">
+      <span class="tab-icon">&#9776;</span> Dashboard
+    </a>
+    <a href="log.html">
+      <span class="tab-icon">+</span> Log
+    </a>
+    <a href="checkin.html">
+      <span class="tab-icon">&#10003;</span> Check
+    </a>
+    <a href="settings.html" class="active">
+      <span class="tab-icon">&#9881;</span> Settings
+    </a>
+  </nav>
+
+  <script>
+    let userId = null;
+
+    async function init() {
+      const session = await AUTH.requireAuth();
+      if (!session) return;
+      userId = session.user.id;
+      await loadSettings();
+    }
+
+    async function loadSettings() {
+      const { data } = await db
+        .from("settings")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+      if (data) {
+        document.getElementById("runway-days").value = data.runway_days;
+        document.getElementById("starting-estimate").value = parseFloat(data.starting_daily_estimate);
+      }
+    }
+
+    document.getElementById("save-btn").addEventListener("click", async () => {
+      const runwayDays = parseInt(document.getElementById("runway-days").value);
+      const startingEstimate = parseFloat(document.getElementById("starting-estimate").value);
+
+      if (isNaN(runwayDays) || runwayDays < 1) return U.toast("Runway days must be at least 1.");
+      if (isNaN(startingEstimate) || startingEstimate < 0) return U.toast("Starting estimate cannot be negative.");
+
+      const { error } = await db
+        .from("settings")
+        .upsert({
+          user_id: userId,
+          runway_days: runwayDays,
+          starting_daily_estimate: startingEstimate,
+        });
+
+      if (error) {
+        U.toast("Failed to save settings.");
+        return;
+      }
+
+      U.toast("Settings saved!", true);
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await AUTH.logout();
+      window.location.replace("login.html");
+    });
+
+    init();
+  </script>
+</body>
+</html>

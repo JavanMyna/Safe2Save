@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Safe-to-Save</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body class="auth-page">
+  <div id="toast" class="toast"></div>
+
+  <div class="auth-card" id="login-form">
+    <h1>Safe-to-Save</h1>
+    <p class="subtitle">Sign in to your account</p>
+
+    <div class="form-group">
+      <label for="login-username">Username</label>
+      <input type="text" id="login-username" autocomplete="username" placeholder="Your username" />
+    </div>
+
+    <div class="form-group">
+      <label for="login-password">Password</label>
+      <input type="password" id="login-password" autocomplete="current-password" placeholder="Your password" />
+    </div>
+
+    <button class="btn btn-primary btn-block" id="login-submit">Sign In</button>
+    <p class="auth-toggle">Don't have an account? <a href="#" id="show-signup">Sign up</a></p>
+  </div>
+
+  <div class="auth-card" id="signup-form" style="display:none;">
+    <h1>Safe-to-Save</h1>
+    <p class="subtitle">Create your account</p>
+
+    <div class="form-group">
+      <label for="signup-username">Username</label>
+      <input type="text" id="signup-username" autocomplete="username" placeholder="Choose a username" />
+    </div>
+
+    <div class="form-group">
+      <label for="signup-password">Password</label>
+      <input type="password" id="signup-password" autocomplete="new-password" placeholder="Choose a password" />
+    </div>
+
+    <div class="form-group">
+      <label for="signup-confirm">Confirm password</label>
+      <input type="password" id="signup-confirm" autocomplete="new-password" placeholder="Re-enter password" />
+    </div>
+
+    <button class="btn btn-primary btn-block" id="signup-submit">Create Account</button>
+    <p class="auth-toggle">Already have an account? <a href="#" id="show-login">Sign in</a></p>
+  </div>
+
+  <script>
+    AUTH.redirectIfAuthed();
+
+    document.getElementById("show-signup").addEventListener("click", (e) => {
+      e.preventDefault();
+      document.getElementById("login-form").style.display = "none";
+      document.getElementById("signup-form").style.display = "";
+    });
+
+    document.getElementById("show-login").addEventListener("click", (e) => {
+      e.preventDefault();
+      document.getElementById("signup-form").style.display = "none";
+      document.getElementById("login-form").style.display = "";
+    });
+
+    document.getElementById("login-submit").addEventListener("click", async () => {
+      const username = document.getElementById("login-username").value.trim();
+      const password = document.getElementById("login-password").value;
+
+      if (!username || !password) return U.toast("Please fill in both fields.");
+
+      try {
+        await AUTH.login(username, password);
+        window.location.replace("dashboard.html");
+      } catch (err) {
+        U.toast(err.message);
+      }
+    });
+
+    document.getElementById("signup-submit").addEventListener("click", async () => {
+      const username = document.getElementById("signup-username").value.trim();
+      const password = document.getElementById("signup-password").value;
+      const confirm = document.getElementById("signup-confirm").value;
+
+      if (!username || !password) return U.toast("Please fill in all fields.");
+      if (password.length < 6) return U.toast("Password must be at least 6 characters.");
+      if (password !== confirm) return U.toast("Passwords do not match.");
+
+      try {
+        const data = await AUTH.signup(username, password);
+        if (data.session) {
+          window.location.replace("dashboard.html");
+        } else {
+          U.toast("Account created! You can now sign in.", true);
+          document.getElementById("signup-form").style.display = "none";
+          document.getElementById("login-form").style.display = "";
+          document.getElementById("login-username").value = username;
+        }
+      } catch (err) {
+        U.toast(err.message);
+      }
+    });
+
+    // Enter key submits whichever form is visible
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      if (document.getElementById("login-form").style.display !== "none") {
+        document.getElementById("login-submit").click();
+      } else {
+        document.getElementById("signup-submit").click();
+      }
+    });
+  </script>
+</body>
+</html>

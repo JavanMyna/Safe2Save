@@ -1,0 +1,80 @@
+const AUTH = (() => {
+  const SYNTHETIC_DOMAIN = "@safe-to-save.local";
+
+  function emailFromUsername(username) {
+    return username.trim().toLowerCase() + SYNTHETIC_DOMAIN;
+  }
+
+  async function signup(username, password) {
+    const { data, error } = await db.auth.signUp({
+      email: emailFromUsername(username),
+      password,
+      options: {
+        data: { username: username.trim() },
+      },
+    });
+
+    if (error) {
+      if (error.message.includes("already registered") || error.message.includes("already exists")) {
+        throw new Error("Username already taken.");
+      }
+      throw error;
+    }
+
+    return data;
+  }
+
+  async function login(username, password) {
+    const { data, error } = await db.auth.signInWithPassword({
+      email: emailFromUsername(username),
+      password,
+    });
+
+    if (error) {
+      if (error.message.includes("Invalid login") || error.message.includes("invalid")) {
+        throw new Error("Invalid username or password.");
+      }
+      throw error;
+    }
+
+    return data;
+  }
+
+  async function logout() {
+    await db.auth.signOut();
+  }
+
+  async function getUser() {
+    const {
+      data: { user },
+    } = await db.auth.getUser();
+    return user;
+  }
+
+  async function getSession() {
+    const {
+      data: { session },
+    } = await db.auth.getSession();
+    return session;
+  }
+
+  /** Redirect to login if no active session */
+  async function requireAuth() {
+    const session = await getSession();
+    if (!session) {
+      window.location.replace("login.html");
+      return null;
+    }
+    return session;
+  }
+
+  /** If already logged in on the auth page, redirect to dashboard */
+  async function redirectIfAuthed() {
+    const session = await getSession();
+    if (session) {
+      window.location.replace("dashboard.html");
+    }
+  }
+
+  return { signup, login, logout, getUser, getSession, requireAuth, redirectIfAuthed };
+})();
