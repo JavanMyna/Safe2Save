@@ -60,6 +60,17 @@
     </div>
 
     <div class="card">
+      <h2>Budget</h2>
+      <div class="form-group">
+        <label for="monthly-budget">Monthly budget (RM)</label>
+        <input type="number" id="monthly-budget" inputmode="decimal" min="0" step="0.01" value="" placeholder="No budget set" />
+        <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">
+          Leave empty to disable the Budget Pace card on the dashboard. Per-category budgets are not yet supported.
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>About Safe-to-Save</h2>
       <p style="font-size:0.85rem;color:var(--text-secondary);">
         A personal finance tool for people with irregular income. Instead of counting down to a fixed payday,
@@ -125,15 +136,25 @@
       if (data) {
         document.getElementById("runway-days").value = data.runway_days;
         document.getElementById("starting-estimate").value = parseFloat(data.starting_daily_estimate);
+        if (data.monthly_budget != null) {
+          document.getElementById("monthly-budget").value = parseFloat(data.monthly_budget);
+        }
       }
     }
 
     document.getElementById("save-btn").addEventListener("click", async () => {
       const runwayDays = parseInt(document.getElementById("runway-days").value);
       const startingEstimate = parseFloat(document.getElementById("starting-estimate").value);
+      const monthlyBudgetRaw = document.getElementById("monthly-budget").value.trim();
 
       if (isNaN(runwayDays) || runwayDays < 1) return U.toast("Runway days must be at least 1.");
       if (isNaN(startingEstimate) || startingEstimate < 0) return U.toast("Starting estimate cannot be negative.");
+
+      var monthlyBudget = null;
+      if (monthlyBudgetRaw) {
+        monthlyBudget = parseFloat(monthlyBudgetRaw);
+        if (isNaN(monthlyBudget) || monthlyBudget < 0) return U.toast("Monthly budget must be 0 or more, or leave empty.");
+      }
 
       const { error } = await db
         .from("settings")
@@ -141,6 +162,7 @@
           user_id: userId,
           runway_days: runwayDays,
           starting_daily_estimate: startingEstimate,
+          monthly_budget: monthlyBudget,
         });
 
       if (error) {

@@ -1143,3 +1143,116 @@ textarea {
   background: var(--surface);
   cursor: pointer;
 }
+
+/* ---- Recurring form ---- */
+.recurring-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+}
+
+.recurring-toggle-row span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.recurring-options {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.freq-chips {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.freq-chip {
+  flex: 1;
+  padding: 0.45rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.freq-chip.active {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+
+/* ---- Budget Pace ---- */
+.budget-progress {
+  width: 100%;
+  height: 12px;
+  background: var(--bg);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.budget-progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--green);
+  transition: width 0.3s ease;
+}
+
+.budget-progress-fill.warning {
+  background: #ff9800;
+}
+
+.budget-progress-fill.over {
+  background: var(--red);
+}
+
+.budget-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.budget-stat {
+  text-align: center;
+}
+
+.budget-stat .stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.budget-stat .stat-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.stat-positive { color: var(--green); }
+.stat-negative { color: var(--red); }
+.stat-neutral  { color: var(--text); }
+
+/* ---- Projected Month End ---- */
+.projected-total {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.projected-total.positive { color: var(--green); }
+.projected-total.negative { color: var(--red); }
+
+.projected-meta {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}

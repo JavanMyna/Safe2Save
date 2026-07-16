@@ -12,6 +12,8 @@
 --   alter table settings add column if not exists custom_categories jsonb default '[]'::jsonb;
 -- Phase 2: add type column for income/expense tracking
 --   alter table transactions add column type text not null default 'expense' check (type in ('expense','income'));
+-- Phase 3: recurring transactions + budget pace
+--   alter table settings add column monthly_budget numeric;
 -- ============================================================
 
 -- 1. Profiles table
@@ -134,3 +136,27 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
+
+-- 6. Recurring transactions table
+create table recurring_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  amount numeric not null,
+  type text not null default 'expense' check (type in ('expense', 'income')),
+  category text,
+  note text,
+  frequency text not null check (frequency in ('daily', 'weekly', 'monthly')),
+  day_of_week int,
+  day_of_month int,
+  start_date date not null,
+  next_occurrence date not null,
+  active boolean not null default true,
+  created_at timestamptz default now()
+);
+
+alter table recurring_transactions enable row level security;
+
+create policy "recurring_select_own" on recurring_transactions for select using (user_id = auth.uid());
+create policy "recurring_insert_own" on recurring_transactions for insert with check (user_id = auth.uid());
+create policy "recurring_update_own" on recurring_transactions for update using (user_id = auth.uid());
+create policy "recurring_delete_own" on recurring_transactions for delete using (user_id = auth.uid());

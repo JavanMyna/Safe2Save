@@ -42,6 +42,39 @@
       </div>
 
       <div class="form-group">
+        <div class="recurring-toggle-row">
+          <span>Repeat</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="repeat-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="recurring-options" id="recurring-options" style="display:none;">
+          <label style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.3rem;display:block;">Frequency</label>
+          <div class="freq-chips" id="freq-chips">
+            <button class="freq-chip" data-freq="daily">Daily</button>
+            <button class="freq-chip active" data-freq="monthly">Monthly</button>
+            <button class="freq-chip" data-freq="weekly">Weekly</button>
+          </div>
+          <div id="freq-daily" style="display:none;"></div>
+          <div id="freq-weekly" style="display:none;">
+            <div class="form-group">
+              <label for="day-of-week">Day of week</label>
+              <select id="day-of-week" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);">
+                <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option>
+              </select>
+            </div>
+          </div>
+          <div id="freq-monthly">
+            <div class="form-group">
+              <label for="day-of-month">Day of month</label>
+              <input type="number" id="day-of-month" min="1" max="31" value="1" step="1" style="width:100%;" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
         <label>Category</label>
         <div class="cat-chips" id="cat-chips"></div>
         <div class="cat-create-row" id="cat-create" style="display:none;">
@@ -100,6 +133,41 @@
     var editId = null;
     var selectedCategory = "";
     var txType = "expense";
+    var currFreq = "monthly";
+
+    function nextOccurrence(date, freq, dayOfWeek, dayOfMonth) {
+      var d = new Date(date);
+      if (freq === "daily") { d.setDate(d.getDate() + 1); }
+      else if (freq === "weekly") { d.setDate(d.getDate() + 7); }
+      else if (freq === "monthly") { d.setMonth(d.getMonth() + 1); }
+      return d.toISOString().substring(0, 10);
+    }
+
+    function getRecurringPayload(startDate) {
+      var freq = currFreq;
+      var payload = {
+        user_id: userId,
+        amount: parseFloat(document.getElementById("amount").value),
+        type: txType,
+        category: document.getElementById("category").value || null,
+        note: document.getElementById("note").value.trim() || null,
+        frequency: freq,
+        start_date: startDate || U.todayStr(),
+        next_occurrence: nextOccurrence(startDate || U.todayStr(), freq,
+          parseInt(document.getElementById("day-of-week").value),
+          parseInt(document.getElementById("day-of-month").value))
+      };
+      if (freq === "weekly") payload.day_of_week = parseInt(document.getElementById("day-of-week").value);
+      if (freq === "monthly") payload.day_of_month = parseInt(document.getElementById("day-of-month").value);
+      if (freq === "daily") { payload.day_of_week = null; payload.day_of_month = null; }
+      return payload;
+    }
+
+    function showFreqFields(freq) {
+      document.getElementById("freq-daily").style.display = freq === "daily" ? "" : "none";
+      document.getElementById("freq-weekly").style.display = freq === "weekly" ? "" : "none";
+      document.getElementById("freq-monthly").style.display = freq === "monthly" ? "" : "none";
+    }
 
     function getCustomCategories() {
       return CAT.getCustom();
@@ -188,7 +256,10 @@
           document.getElementById("note").value = data.note || "";
           txType = data.type || "expense";
           updateTypeToggle();
-          renderChips();
+        }
+        renderChips();
+      }
+
       loadToday();
     }
 
@@ -235,6 +306,14 @@
       } else {
         var { error } = await db.from("transactions").insert({ user_id: userId, amount: amount, type: txType, category: category || null, note: note || null, occurred_on: date });
         if (error) { U.toast("Failed to save transaction."); return; }
+
+        var isRepeat = document.getElementById("repeat-toggle").checked;
+        if (isRepeat) {
+          var rec = getRecurringPayload(date);
+          var { error: rerr } = await db.from("recurring_transactions").insert(rec);
+          if (rerr) { U.toast("Transaction saved, but recurring setup failed."); }
+        }
+
         U.toast("Saved!", true);
         document.getElementById("amount").value = "";
         selectedCategory = "";
@@ -242,6 +321,8 @@
         document.getElementById("note").value = "";
         txType = "expense";
         updateTypeToggle();
+        document.getElementById("repeat-toggle").checked = false;
+        document.getElementById("recurring-options").style.display = "none";
         document.getElementById("amount").focus();
         renderChips();
         loadToday();
@@ -268,6 +349,19 @@
       if (error) { U.toast("Failed to delete."); return; }
       U.toast("Deleted.", true);
       window.location.href = "dashboard.html";
+    });
+
+    document.getElementById("repeat-toggle").addEventListener("change", function() {
+      document.getElementById("recurring-options").style.display = this.checked ? "" : "none";
+    });
+
+    document.querySelectorAll("#freq-chips .freq-chip").forEach(function(chip) {
+      chip.addEventListener("click", function() {
+        document.querySelectorAll("#freq-chips .freq-chip").forEach(function(c) { c.classList.remove("active"); });
+        this.classList.add("active");
+        currFreq = this.dataset.freq;
+        showFreqFields(currFreq);
+      });
     });
 
     init();
