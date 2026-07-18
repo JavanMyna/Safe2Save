@@ -138,6 +138,7 @@
     var currentWindow = 7;
     var currentOverview = "spending";
     var allTransactions = [];
+    var allMonths = [];
     var chartTransactions = [];
     var userId = null;
     var donutCatFilter = "";
@@ -290,11 +291,7 @@
     }
 
     function getFilterMonths() {
-      var months = new Set();
-      for (var i = 0; i < allTransactions.length; i++) {
-        months.add(allTransactions[i].occurred_on.substring(0, 7));
-      }
-      return Array.from(months).sort().reverse();
+      return allMonths;
     }
 
     function renderFilterChips() {
@@ -538,7 +535,10 @@
       }
       var latest = checkins[0];
       var checkinBalance = parseFloat(latest.balance);
-      var checkinDate = latest.checked_at.substring(0, 10);
+      // Convert UTC timestamptz to local calendar date so check-ins
+      // in the early-morning hours (UTC+8) don't double-count the
+      // previous day's transactions (Bug 5).
+      var checkinDate = U.localDateStr(latest.checked_at);
       var today = U.todayStr();
 
       // Pull actual logged transactions since the check-in and fold them
@@ -606,13 +606,23 @@
 
     async function reloadAll() {
       var since = U.daysAgoStr(currentWindow - 1);
-      var [{ data: chartTx, error }, { data: allTx }] = await Promise.all([
+      var [{ data: chartTx, error }, { data: allTx }, { data: monthData }] = await Promise.all([
         db.from("transactions").select("*").eq("user_id", userId).gte("occurred_on", since).order("occurred_on", { ascending: true }),
-        db.from("transactions").select("*").eq("user_id", userId).order("occurred_on", { ascending: false }).limit(200),
+        // Capped at 500 to bound memory; TODO: server-side month/search
+        // filtering so the Recent Transactions list scales indefinitely.
+        db.from("transactions").select("*").eq("user_id", userId).order("occurred_on", { ascending: false }).limit(500),
+        // Lightweight full-history query for month filter chips — one
+        // column, no limit, so all months show up regardless of tx count.
+        db.from("transactions").select("occurred_on").eq("user_id", userId).order("occurred_on", { ascending: false }),
       ]);
       if (error) { U.toast("Failed to load transactions."); return; }
       chartTransactions = chartTx || [];
       allTransactions = allTx || [];
+      var monthSet = new Set();
+      (monthData || []).forEach(function(t) {
+        monthSet.add(t.occurred_on.substring(0, 7));
+      });
+      allMonths = Array.from(monthSet).sort().reverse();
 
       if (currentOverview === "spending") {
         renderSpendingChart();
@@ -638,6 +648,9 @@
       var session = await AUTH.requireAuth();
       if (!session) return;
       userId = session.user.id;
+      // Pull custom categories from Supabase so the donut chart picks up
+      // colours for categories created on other devices (Bug 3).
+      await CAT.syncFromServer(db, userId);
       await processRecurringCatchUp();
       await loadBudgetSettings();
       reloadAll();

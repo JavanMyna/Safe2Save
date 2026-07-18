@@ -185,7 +185,9 @@
     function saveCustomCategories(arr) {
       localStorage.setItem("customCats", JSON.stringify(arr));
       if (!userId) return;
-      var cats = arr.map(function(c) { return { name: c.name, icon: c.icon || c.emoji || "📦" }; });
+      // Write emoji + deterministic colour to Supabase so synced devices
+      // get the same appearance (see CAT.syncFromServer / CAT.hashColor).
+      var cats = arr.map(function(c) { return { name: c.name, emoji: c.emoji || "📦", color: c.color || CAT.hashColor(c.name) }; });
       try { db.from("settings").upsert({ user_id: userId, custom_categories: cats }); } catch(e) {}
     }
 
@@ -233,7 +235,7 @@
         var emoji = document.getElementById("cat-emoji").textContent;
         var customs = getCustomCategories();
         if (customs.some(function(c) { return c.name === name; })) return U.toast("Already exists.");
-        customs.push({ name: name, emoji: emoji, icon: emoji });
+        customs.push({ name: name, emoji: emoji, color: CAT.hashColor(name) });
         saveCustomCategories(customs);
         selectedCategory = name;
         document.getElementById("category").value = name;
@@ -248,6 +250,9 @@
       var session = await AUTH.requireAuth();
       if (!session) return;
       userId = session.user.id;
+      // Pull custom categories from Supabase before rendering — ensures
+      // categories created on other devices show up (Bug 3).
+      await CAT.syncFromServer(db, userId);
       document.getElementById("date").value = U.todayStr();
 
       var urlParams = new URLSearchParams(window.location.search);

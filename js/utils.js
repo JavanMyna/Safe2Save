@@ -34,6 +34,13 @@ const U = (() => {
     return Math.ceil(ms / (1000 * 60 * 60 * 24));
   }
 
+  // Convert a UTC timestamptz string to a local YYYY-MM-DD so that
+  // times like midnight–8am in UTC+8 don't land on the previous day.
+  function localDateStr(isoTimestamp) {
+    var d = new Date(isoTimestamp);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
   function toast(msg, success = false) {
     const el = document.getElementById("toast");
     if (!el) return;
@@ -82,5 +89,5 @@ const U = (() => {
     }, 0);
   }
 
-  return { fmtMYR, fmtDate, fmtDateShort, todayStr, daysAgoStr, daysBetween, toast, escHtml, isRealSpend, spendTotal, addMonthsSafe };
+  return { fmtMYR, fmtDate, fmtDateShort, todayStr, daysAgoStr, daysBetween, localDateStr, toast, escHtml, isRealSpend, spendTotal, addMonthsSafe };
 })();
