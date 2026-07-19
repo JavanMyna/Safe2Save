@@ -113,6 +113,7 @@
     <div class="card" id="today-card">
       <h2>Today's Transactions</h2>
       <div class="empty-state" id="today-empty">
+        <div class="empty-icon">&#128196;</div>
         <p>Nothing logged today yet.</p>
       </div>
       <div id="today-list"></div>
@@ -301,7 +302,7 @@
       totalEl.style.display = "";
       container.innerHTML = data.map(function(t) {
         var isIncome = t.type === "income";
-        return '<div class="spend-row"><div>' + (t.category ? '<span class="spend-category">' + U.escHtml(t.category) + '</span>' : "") + (t.note ? '<span class="spend-meta">' + U.escHtml(t.note) + '</span>' : "") + '</div><div class="spend-amount currency' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '−') + ' ' + U.fmtMYR(t.amount) + '</div></div>';
+        return '<div class="spend-row"><div>' + (t.category ? '<span class="spend-category" style="border-left:3px solid ' + CAT.colorFor(t.category) + ';">' + U.escHtml(t.category) + '</span>' : "") + (t.note ? '<span class="spend-meta">' + U.escHtml(t.note) + '</span>' : "") + '</div><div class="spend-amount currency' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '−') + ' ' + U.fmtMYR(t.amount) + '</div></div>';
       }).join("");
     }
 

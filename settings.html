@@ -15,6 +15,7 @@
   <script src="js/supabase.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/categories.js"></script>
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -72,6 +73,82 @@
         <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">
           Leave empty to disable the Budget Pace card on the dashboard. Per-category budgets are not yet supported.
         </p>
+      </div>
+    </div>
+
+    <div class="card" id="recurring-card">
+      <h2>Recurring Transactions</h2>
+
+      <div class="result-grid" id="rec-summary" style="display:none;">
+        <div class="result-item">
+          <div class="result-label">Monthly In</div>
+          <div class="result-value currency" id="rec-monthly-in" style="color:var(--green);">—</div>
+        </div>
+        <div class="result-item">
+          <div class="result-label">Monthly Out</div>
+          <div class="result-value currency" id="rec-monthly-out" style="color:var(--red);">—</div>
+        </div>
+      </div>
+
+      <div id="rec-income-group" style="display:none;">
+        <h3 style="color:var(--green);margin-bottom:0.5rem;">Income</h3>
+        <div id="rec-income-list"></div>
+      </div>
+
+      <div id="rec-expense-group" style="display:none;">
+        <h3 style="color:var(--red);margin-bottom:0.5rem;">Expenses</h3>
+        <div id="rec-expense-list"></div>
+      </div>
+
+      <div class="empty-state" id="rec-empty">
+        <p>No recurring transactions yet. Log one with &quot;Repeat&quot; enabled.</p>
+      </div>
+    </div>
+
+    <!-- Inline edit form for recurring -->
+    <div class="card" id="rec-edit-card" style="display:none;">
+      <h2 id="rec-edit-title">Edit Recurring</h2>
+
+      <div class="form-group">
+        <label>Type</label>
+        <div class="type-toggle" id="rec-edit-type">
+          <button class="type-btn active" data-type="expense">− Expense</button>
+          <button class="type-btn" data-type="income">+ Income</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="rec-edit-amount">Amount (RM)</label>
+        <input type="number" id="rec-edit-amount" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" />
+      </div>
+
+      <div class="form-group">
+        <label for="rec-edit-note">Note</label>
+        <input type="text" id="rec-edit-note" placeholder="What is this for?" maxlength="200" />
+      </div>
+
+      <div class="form-group">
+        <label>Frequency</label>
+        <div class="freq-chips" id="rec-edit-freq">
+          <button class="freq-chip" data-freq="daily">Daily</button>
+          <button class="freq-chip active" data-freq="monthly">Monthly</button>
+          <button class="freq-chip" data-freq="weekly">Weekly</button>
+        </div>
+        <div id="rec-edit-freq-weekly" style="display:none;margin-top:0.5rem;">
+          <label for="rec-edit-dow" style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">Day of week</label>
+          <select id="rec-edit-dow" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);">
+            <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option>
+          </select>
+        </div>
+        <div id="rec-edit-freq-monthly" style="margin-top:0.5rem;">
+          <label for="rec-edit-dom" style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">Day of month</label>
+          <input type="number" id="rec-edit-dom" min="1" max="31" value="1" step="1" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);" />
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-primary" id="rec-edit-save">Save</button>
+        <button class="btn btn-outline" id="rec-edit-cancel">Cancel</button>
       </div>
     </div>
 
@@ -140,6 +217,7 @@
       });
 
       await loadSettings();
+      loadRecurring();
     }
 
     async function loadSettings() {
@@ -213,6 +291,244 @@
     document.getElementById("logout-btn").addEventListener("click", async () => {
       await AUTH.logout();
       window.location.replace("login.html");
+    });
+
+    // ---- Recurring Transactions ----
+    var recItems = [];
+    var recEditId = null;
+    var recEditFreq = "monthly";
+
+    function monthlyEquivalent(item) {
+      switch (item.frequency) {
+        case "daily": return parseFloat(item.amount) * 30;
+        case "weekly": return parseFloat(item.amount) * 4.33;
+        case "monthly": return parseFloat(item.amount);
+        default: return parseFloat(item.amount);
+      }
+    }
+
+    function freqLabel(freq) {
+      var map = { daily: "Daily", weekly: "Weekly", monthly: "Monthly" };
+      return map[freq] || freq;
+    }
+
+    function confirmDialog(msg) {
+      return new Promise(function(resolve) {
+        var overlay = document.createElement("div");
+        overlay.className = "dialog-overlay";
+        overlay.innerHTML = '<div class="dialog-box"><p>' + msg + '</p><div class="dialog-actions"><button class="btn btn-outline btn-sm" id="dlg-cancel">Cancel</button><button class="btn btn-sm" style="background:var(--red);color:white;" id="dlg-confirm">Confirm</button></div></div>';
+        document.body.appendChild(overlay);
+        overlay.querySelector("#dlg-cancel").addEventListener("click", function() { overlay.remove(); resolve(false); });
+        overlay.querySelector("#dlg-confirm").addEventListener("click", function() { overlay.remove(); resolve(true); });
+        overlay.addEventListener("click", function(e) { if (e.target === overlay) { overlay.remove(); resolve(false); } });
+      });
+    }
+
+    async function loadRecurring() {
+      var { data } = await db.from("recurring_transactions").select("*").eq("user_id", userId).order("next_occurrence", { ascending: true });
+      recItems = data || [];
+      renderRecurring();
+    }
+
+    function renderRecurring() {
+      var summary = document.getElementById("rec-summary");
+      var incomeGroup = document.getElementById("rec-income-group");
+      var expenseGroup = document.getElementById("rec-expense-group");
+      var incomeList = document.getElementById("rec-income-list");
+      var expenseList = document.getElementById("rec-expense-list");
+      var empty = document.getElementById("rec-empty");
+      var editCard = document.getElementById("rec-edit-card");
+
+      if (recItems.length === 0) {
+        summary.style.display = "none";
+        incomeGroup.style.display = "none";
+        expenseGroup.style.display = "none";
+        empty.style.display = "";
+        if (recEditId === null) editCard.style.display = "none";
+        return;
+      }
+
+      empty.style.display = "none";
+
+      var activeItems = recItems.filter(function(r) { return r.active; });
+      var monthlyIn = 0, monthlyOut = 0;
+      activeItems.forEach(function(r) {
+        var m = monthlyEquivalent(r);
+        if (r.type === "income") monthlyIn += m; else monthlyOut += m;
+      });
+      document.getElementById("rec-monthly-in").textContent = U.fmtMYR(monthlyIn);
+      document.getElementById("rec-monthly-out").textContent = U.fmtMYR(monthlyOut);
+      summary.style.display = "";
+
+      var incomeItems = recItems.filter(function(r) { return r.type === "income"; });
+      var expenseItems = recItems.filter(function(r) { return r.type === "expense"; });
+
+      incomeGroup.style.display = incomeItems.length ? "" : "none";
+      expenseGroup.style.display = expenseItems.length ? "" : "none";
+
+      incomeList.innerHTML = buildRecRows(incomeItems);
+      expenseList.innerHTML = buildRecRows(expenseItems);
+
+      bindRecRowEvents();
+    }
+
+    function buildRecRows(items) {
+      var html = "";
+      for (var i = 0; i < items.length; i++) {
+        var r = items[i];
+        var emoji = CAT.emojiFor(r.category || "Other");
+        var isIncome = r.type === "income";
+        var amtClass = isIncome ? 'style="color:var(--green);"' : 'style="color:var(--red);"';
+        var paused = !r.active ? ' <span class="rec-paused">PAUSED</span>' : "";
+        html += '<div class="rec-row' + (!r.active ? ' rec-paused-row' : '') + '" data-id="' + r.id + '">' +
+          '<div class="rec-row-left">' +
+            '<span class="rec-emoji">' + emoji + '</span>' +
+            '<div>' +
+              '<div class="rec-row-cat">' + U.escHtml(r.category || "Other") + paused + '</div>' +
+              '<div class="rec-row-meta">' +
+                (r.note ? U.escHtml(r.note) + ' · ' : '') +
+                '<span class="rec-freq-badge">' + freqLabel(r.frequency) + '</span>' +
+                ' · Next: ' + U.fmtDateShort(r.next_occurrence) +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="rec-row-right">' +
+            '<div class="currency" ' + amtClass + '>' + (isIncome ? '+ ' : '− ') + U.fmtMYR(r.amount) + '</div>' +
+            '<div class="rec-actions">' +
+              '<button class="tx-action-btn rec-edit-btn" data-id="' + r.id + '" title="Edit">&#9998;</button>' +
+              '<button class="tx-action-btn rec-toggle-btn" data-id="' + r.id + '" title="' + (r.active ? 'Pause' : 'Resume') + '">' + (r.active ? '⏸' : '▶') + '</button>' +
+              '<button class="tx-action-btn danger rec-del-btn" data-id="' + r.id + '" title="Delete">&#128465;</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+      return html;
+    }
+
+    function bindRecRowEvents() {
+      document.querySelectorAll(".rec-edit-btn").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.stopPropagation();
+          var id = this.dataset.id;
+          openRecEdit(id);
+        });
+      });
+      document.querySelectorAll(".rec-toggle-btn").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.stopPropagation();
+          var id = this.dataset.id;
+          toggleRecActive(id);
+        });
+      });
+      document.querySelectorAll(".rec-del-btn").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.stopPropagation();
+          var id = this.dataset.id;
+          deleteRecItem(id);
+        });
+      });
+    }
+
+    function openRecEdit(id) {
+      var item = recItems.find(function(r) { return r.id === id; });
+      if (!item) return;
+
+      recEditId = id;
+      recEditFreq = item.frequency || "monthly";
+
+      document.getElementById("rec-edit-title").textContent = "Edit Recurring";
+      document.getElementById("rec-edit-amount").value = item.amount;
+      document.getElementById("rec-edit-note").value = item.note || "";
+
+      // Set type toggle
+      document.querySelectorAll("#rec-edit-type .type-btn").forEach(function(b) {
+        b.classList.toggle("active", b.dataset.type === item.type);
+      });
+
+      // Set frequency chips
+      document.querySelectorAll("#rec-edit-freq .freq-chip").forEach(function(c) {
+        c.classList.toggle("active", c.dataset.freq === recEditFreq);
+      });
+      showRecEditFreqFields(recEditFreq);
+
+      if (recEditFreq === "weekly" && item.day_of_week != null) {
+        document.getElementById("rec-edit-dow").value = item.day_of_week;
+      }
+      if (recEditFreq === "monthly" && item.day_of_month != null) {
+        document.getElementById("rec-edit-dom").value = item.day_of_month;
+      }
+
+      document.getElementById("rec-edit-card").style.display = "";
+      document.getElementById("rec-edit-card").scrollIntoView({ behavior: "smooth" });
+    }
+
+    function showRecEditFreqFields(freq) {
+      document.getElementById("rec-edit-freq-weekly").style.display = freq === "weekly" ? "" : "none";
+      document.getElementById("rec-edit-freq-monthly").style.display = freq === "monthly" ? "" : "none";
+    }
+
+    function closeRecEdit() {
+      recEditId = null;
+      document.getElementById("rec-edit-card").style.display = "none";
+    }
+
+    async function toggleRecActive(id) {
+      var item = recItems.find(function(r) { return r.id === id; });
+      if (!item) return;
+      var newActive = !item.active;
+      var { error } = await db.from("recurring_transactions").update({ active: newActive }).eq("id", id);
+      if (error) { U.toast("Failed to update."); return; }
+      item.active = newActive;
+      U.toast(newActive ? "Resumed." : "Paused.", true);
+      renderRecurring();
+    }
+
+    async function deleteRecItem(id) {
+      var ok = await confirmDialog("Delete this recurring transaction? This does not remove previously logged entries.");
+      if (!ok) return;
+      var { error } = await db.from("recurring_transactions").delete().eq("id", id);
+      if (error) { U.toast("Failed to delete."); return; }
+      U.toast("Deleted.", true);
+      loadRecurring();
+    }
+
+    // Inline edit form handlers
+    document.getElementById("rec-edit-save").addEventListener("click", async function() {
+      if (!recEditId) return;
+      var amount = parseFloat(document.getElementById("rec-edit-amount").value);
+      if (isNaN(amount) || amount <= 0) return U.toast("Please enter a valid amount.");
+
+      var activeTypeBtn = document.querySelector("#rec-edit-type .type-btn.active");
+      var type = activeTypeBtn ? activeTypeBtn.dataset.type : "expense";
+      var note = document.getElementById("rec-edit-note").value.trim() || null;
+      var freq = recEditFreq;
+
+      var payload = {
+        amount: amount,
+        type: type,
+        note: note,
+        frequency: freq,
+        day_of_week: freq === "weekly" ? parseInt(document.getElementById("rec-edit-dow").value) : null,
+        day_of_month: freq === "monthly" ? parseInt(document.getElementById("rec-edit-dom").value) : null,
+      };
+
+      var { error } = await db.from("recurring_transactions").update(payload).eq("id", recEditId);
+      if (error) { U.toast("Failed to save."); return; }
+
+      U.toast("Updated!", true);
+      closeRecEdit();
+      loadRecurring();
+    });
+
+    document.getElementById("rec-edit-cancel").addEventListener("click", closeRecEdit);
+
+    document.querySelectorAll("#rec-edit-freq .freq-chip").forEach(function(chip) {
+      chip.addEventListener("click", function() {
+        document.querySelectorAll("#rec-edit-freq .freq-chip").forEach(function(c) { c.classList.remove("active"); });
+        this.classList.add("active");
+        recEditFreq = this.dataset.freq;
+        showRecEditFreqFields(recEditFreq);
+      });
     });
 
     init();

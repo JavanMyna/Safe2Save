@@ -103,11 +103,17 @@
       <h2>Recent Transactions</h2>
       <div class="search-bar">
         <input type="text" id="tx-search" placeholder="Search notes or categories..." autocomplete="off" />
+        <select id="tx-sort" style="padding:0.45rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:0.78rem;font-weight:600;cursor:pointer;min-width:85px;">
+          <option value="date-desc">Date &#8595;</option>
+          <option value="date-asc">Date &#8593;</option>
+          <option value="amt-desc">Amount &#8595;</option>
+          <option value="amt-asc">Amount &#8593;</option>
+        </select>
       </div>
       <div class="filter-chips" id="filter-chips"></div>
       <button class="clear-filters" id="clear-filters" style="display:none;">&#10005; Clear filters</button>
       <div class="empty-state" id="recent-empty">
-        <div class="empty-icon">-</div>
+        <div class="empty-icon">&#128196;</div>
         <p>No transactions yet. Tap + to log your first.</p>
       </div>
       <div id="recent-list"></div>
@@ -142,6 +148,7 @@
     var chartTransactions = [];
     var userId = null;
     var donutCatFilter = "";
+    var txSort = "date-desc";
 
     function groupByDay(transactions) {
       var map = {};
@@ -178,17 +185,20 @@
       document.getElementById("chart-total").textContent = U.fmtMYR(total);
       var labelMap = { 7: "Last 7 days", 30: "Last 30 days", 365: "Last 12 months" };
       document.getElementById("chart-label").textContent = labelMap[currentWindow];
+      var style = getComputedStyle(document.documentElement);
+      var greenColor = style.getPropertyValue("--green").trim() || "#10B981";
+      var borderColor = style.getPropertyValue("--border").trim() || "#e0e0e0";
       var ctx = document.getElementById("spend-chart").getContext("2d");
       if (chart) chart.destroy();
       chart = new Chart(ctx, {
         type: "bar",
-        data: { labels: labels, datasets: [{ label: "Daily spend", data: data, backgroundColor: "#c8e6c9", borderColor: "#2e7d32", borderWidth: 1, borderRadius: 4 }] },
+        data: { labels: labels, datasets: [{ label: "Daily spend", data: data, backgroundColor: greenColor + "40", borderColor: greenColor, borderWidth: 1, borderRadius: 4 }] },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { return U.fmtMYR(c.raw); } } } },
           scales: {
-            x: { grid: { display: false }, ticks: { maxTicksLimit: currentWindow <= 7 ? 7 : currentWindow <= 30 ? 10 : 12, callback: function(v) { var d=this.getLabelForValue(v); if(!d)return"";var p=d.split("-");return p[2]+"/"+p[1]; } } },
-            y: { beginAtZero: true, ticks: { callback: function(v) { return U.fmtMYR(v); } } }
+            x: { grid: { display: false, color: borderColor }, ticks: { maxTicksLimit: currentWindow <= 7 ? 7 : currentWindow <= 30 ? 10 : 12, callback: function(v) { var d=this.getLabelForValue(v); if(!d)return"";var p=d.split("-");return p[2]+"/"+p[1]; } } },
+            y: { beginAtZero: true, grid: { color: borderColor + "80" }, ticks: { callback: function(v) { return U.fmtMYR(v); } } }
           }
         }
       });
@@ -204,7 +214,9 @@
         catTotals[cat] = (catTotals[cat] || 0) + parseFloat(expenses[i].amount);
       }
       var cats = Object.keys(catTotals).sort(function(a,b) { return catTotals[b] - catTotals[a]; });
-      var surfaceColor = getComputedStyle(document.body).backgroundColor || "#ffffff";
+      var style = getComputedStyle(document.documentElement);
+      var surfaceColor = style.getPropertyValue("--surface").trim() || "#ffffff";
+      var borderColor = style.getPropertyValue("--border").trim() || "#e0e0e0";
       var colors = cats.map(function(c) { return donutCatFilter && c !== donutCatFilter ? CAT.colorFor(c) + "40" : CAT.colorFor(c); });
       var ctx = document.getElementById("donut-chart").getContext("2d");
       if (donutChart) donutChart.destroy();
@@ -266,6 +278,10 @@
       netEl.className = "net-flow currency " + (net >= 0 ? "positive" : "negative");
       var labelMap = { 7: "Last 7 days", 30: "Last 30 days", 365: "Last 12 months" };
       document.getElementById("net-label").textContent = labelMap[currentWindow];
+      var style = getComputedStyle(document.documentElement);
+      var greenColor = style.getPropertyValue("--green").trim() || "#10B981";
+      var redColor = style.getPropertyValue("--red").trim() || "#EF4444";
+      var borderColor = style.getPropertyValue("--border").trim() || "#e0e0e0";
       var ctx = document.getElementById("savings-chart").getContext("2d");
       if (savingsChart) savingsChart.destroy();
       savingsChart = new Chart(ctx, {
@@ -273,8 +289,8 @@
         data: {
           labels: labels,
           datasets: [
-            { label: "Income", data: incomeData, backgroundColor: "#a5d6a7", borderColor: "#2e7d32", borderWidth: 1, borderRadius: 4 },
-            { label: "Expenses", data: expenseData, backgroundColor: "#ef9a9a", borderColor: "#c62828", borderWidth: 1, borderRadius: 4 }
+            { label: "Income", data: incomeData, backgroundColor: greenColor + "40", borderColor: greenColor, borderWidth: 1, borderRadius: 4 },
+            { label: "Expenses", data: expenseData, backgroundColor: redColor + "40", borderColor: redColor, borderWidth: 1, borderRadius: 4 }
           ]
         },
         options: {
@@ -283,8 +299,8 @@
             tooltip: { callbacks: { label: function(c) { return c.dataset.label + ": " + U.fmtMYR(c.raw); } } }
           },
           scales: {
-            x: { grid: { display: false }, ticks: { maxTicksLimit: currentWindow <= 7 ? 7 : currentWindow <= 30 ? 10 : 12, callback: function(v) { var d=this.getLabelForValue(v); if(!d)return"";var p=d.split("-");return p[2]+"/"+p[1]; } } },
-            y: { beginAtZero: true, ticks: { callback: function(v) { return U.fmtMYR(v); } } }
+            x: { grid: { display: false, color: borderColor }, ticks: { maxTicksLimit: currentWindow <= 7 ? 7 : currentWindow <= 30 ? 10 : 12, callback: function(v) { var d=this.getLabelForValue(v); if(!d)return"";var p=d.split("-");return p[2]+"/"+p[1]; } } },
+            y: { beginAtZero: true, grid: { color: borderColor + "80" }, ticks: { callback: function(v) { return U.fmtMYR(v); } } }
           }
         }
       });
@@ -332,7 +348,12 @@
       if (donutCatFilter) {
         filtered = filtered.filter(function(t) { return t.category === donutCatFilter; });
       }
-      return filtered.sort(function(a,b) { return new Date(b.occurred_on) - new Date(a.occurred_on); });
+      switch (txSort) {
+        case "date-asc": return filtered.sort(function(a,b) { return new Date(a.occurred_on) - new Date(b.occurred_on); });
+        case "amt-desc": return filtered.sort(function(a,b) { return parseFloat(b.amount) - parseFloat(a.amount); });
+        case "amt-asc": return filtered.sort(function(a,b) { return parseFloat(a.amount) - parseFloat(b.amount); });
+        default: return filtered.sort(function(a,b) { return new Date(b.occurred_on) - new Date(a.occurred_on); });
+      }
     }
 
     function hasActiveFilters() {
@@ -416,7 +437,7 @@
           '<div class="swipe-bg"><span class="bg-delete">Delete</span><span class="bg-edit">Edit</span></div>' +
           '<div class="tx-content">' +
             '<div><div>' + U.fmtDateShort(t.occurred_on) + '</div>' +
-            (t.category ? '<span class="spend-category">' + U.escHtml(t.category) + '</span>' : '') +
+            (t.category ? '<span class="spend-category" style="border-left:3px solid ' + CAT.colorFor(t.category) + ';">' + U.escHtml(t.category) + '</span>' : '') +
             (t.note ? '<span class="spend-meta"> ' + U.escHtml(t.note) + '</span>' : '') + '</div>' +
             '<div style="display:flex;align-items:center;gap:0.5rem;">' +
               '<div class="tx-actions">' +
@@ -676,6 +697,11 @@
     });
 
     document.getElementById("tx-search").addEventListener("input", filterAndRender);
+
+    document.getElementById("tx-sort").addEventListener("change", function() {
+      txSort = this.value;
+      filterAndRender();
+    });
 
     document.getElementById("clear-filters").addEventListener("click", function() {
       document.getElementById("tx-search").value = "";

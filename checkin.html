@@ -43,6 +43,14 @@
     <div class="card" id="result-card" style="display:none;">
       <h2>Recommendation</h2>
 
+      <div class="balance-stat-card" style="margin-bottom:1rem;">
+        <div class="result-label" style="margin-bottom:0.15rem;">Current Balance</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <span class="currency" id="res-balance" style="font-size:1.4rem;font-weight:700;">—</span>
+          <span id="res-trend" style="font-size:1rem;"></span>
+        </div>
+      </div>
+
       <div class="result-grid" id="result-grid">
         <div class="result-item">
           <div class="result-label">Avg Daily Spend</div>
@@ -64,7 +72,8 @@
     <div class="card" id="history-card">
       <h2>Check-in History</h2>
       <div class="empty-state" id="history-empty">
-        <p>No balance checks yet.</p>
+        <div class="empty-icon">&#128203;</div>
+        <p>No balance checks yet. Enter your balance above to get started.</p>
       </div>
       <div id="history-list"></div>
     </div>
@@ -112,6 +121,13 @@
       const settings = await getSettings();
       const runwayDays = settings.runway_days;
 
+      // Get previous check-in for trend
+      var prevBalance = null;
+      try {
+        var { data: prev } = await db.from("balance_checkins").select("balance").eq("user_id", userId).order("checked_at", { ascending: false }).limit(1);
+        if (prev && prev.length > 0) prevBalance = parseFloat(prev[0].balance);
+      } catch(e) {}
+
       let { data: allTx } = await db
         .from("transactions")
         .select("occurred_on")
@@ -127,6 +143,7 @@
           floor: settings.starting_daily_estimate * runwayDays,
           safeToSave: Math.max(0, balance - settings.starting_daily_estimate * runwayDays),
           runwayDays,
+          prevBalance,
         };
       }
 
@@ -164,7 +181,7 @@
       const floor = avgDailySpend * runwayDays;
       const safeToSave = Math.max(0, balance - floor);
 
-      return { avgDailySpend, floor, safeToSave, runwayDays, lowConfidence: uniqueDays < 5 };
+      return { avgDailySpend, floor, safeToSave, runwayDays, lowConfidence: uniqueDays < 5, prevBalance };
     }
 
     document.getElementById("check-btn").addEventListener("click", async () => {
@@ -180,9 +197,20 @@
       try {
         const rec = await computeRecommendation(balance);
 
+        document.getElementById("res-balance").textContent = U.fmtMYR(balance);
         document.getElementById("res-avg").textContent = U.fmtMYR(rec.avgDailySpend);
         document.getElementById("res-floor").textContent = U.fmtMYR(rec.floor);
         document.getElementById("res-safe").textContent = U.fmtMYR(rec.safeToSave);
+
+        // Trend vs last check-in
+        var trendEl = document.getElementById("res-trend");
+        trendEl.textContent = "";
+        if (rec.prevBalance != null) {
+          var diff = balance - rec.prevBalance;
+          if (diff > 0) trendEl.innerHTML = '<span style="color:var(--green);">&#8593; ' + U.fmtMYR(diff) + '</span>';
+          else if (diff < 0) trendEl.innerHTML = '<span style="color:var(--red);">&#8595; ' + U.fmtMYR(Math.abs(diff)) + '</span>';
+          else trendEl.innerHTML = '<span style="color:var(--text-secondary);">&#8212;</span>';
+        }
 
         document.getElementById("result-summary").innerHTML =
           rec.safeToSave > 0
