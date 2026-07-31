@@ -119,7 +119,7 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ## Development Process
 
-Most features start with a written brief where I outline the requirements, edge cases, and constraints. I then use na LLM to help implement the feature, review the generated code, test it and make any necessary fixes or improvements.
+Most features start with a written brief where I outline the requirements, edge cases, and constraints. I then use an LLM to help implement the feature, review the generated code, test it and make any necessary fixes or improvements.
 
 While AI helps speed up development, I still handle the debugging, verification and final decisions.
 
