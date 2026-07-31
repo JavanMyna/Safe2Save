@@ -2,17 +2,17 @@ var CAT = (function() {
   var defaults = [
     { name: "Food",          emoji: "🍔", color: "#FF6384" },
     { name: "Transport",     emoji: "🚗", color: "#36A2EB" },
-    { name: "Bills",         emoji: "🧾", color: "#FFCE56" },
-    { name: "Shopping",      emoji: "🛍️", color: "#4BC0C0" },
+    { name: "Bills",         emoji: "🧾", color: "#D4A017" },
+    { name: "Shopping",      emoji: "🛍️", color: "#0E9C9C" },
     { name: "Entertainment", emoji: "🎬", color: "#9966FF" },
-    { name: "Health",        emoji: "💊", color: "#FF9F40" },
-    { name: "Other",         emoji: "📦", color: "#C9CBCF" }
+    { name: "Health",        emoji: "💊", color: "#FF7F2A" },
+    { name: "Other",         emoji: "📦", color: "#8E8E93" }
   ];
 
   // Deterministic colour for custom categories — hash the name into a
   // fixed palette so each custom category gets a stable, distinct donut-
   // chart colour instead of all sharing the default gray.
-  var CUSTOM_PALETTE = ["#B39DDB", "#80CBC4", "#FFE082", "#EF9A9A", "#81D4FA", "#A5D6A7", "#F48FB1", "#CE93D8"];
+  var CUSTOM_PALETTE = ["#7E57C2", "#26A69A", "#F4B400", "#E57373", "#29B6F6", "#66BB6A", "#EC407A", "#AB47BC"];
 
   function hashColor(name) {
     var sum = 0;
