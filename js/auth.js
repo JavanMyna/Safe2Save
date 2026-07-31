@@ -6,6 +6,9 @@ const AUTH = (() => {
   }
 
   async function signup(username, password) {
+    var rl = RATELIMIT.check();
+    if (!rl.allowed) throw new Error("Too many attempts. Try again in " + rl.waitSeconds + "s.");
+
     const { data, error } = await db.auth.signUp({
       email: emailFromUsername(username),
       password,
@@ -15,6 +18,7 @@ const AUTH = (() => {
     });
 
     if (error) {
+      RATELIMIT.recordFailure();
       const msg = error.message || error.msg || error.error_description || JSON.stringify(error);
       if (msg.includes("already registered") || msg.includes("already exists") || msg.includes("already been registered")) {
         throw new Error("Username already taken.");
@@ -36,16 +40,21 @@ const AUTH = (() => {
       if (se) console.warn("Settings upsert:", se.message);
     }
 
+    RATELIMIT.clear();
     return data;
   }
 
   async function login(username, password) {
+    var rl = RATELIMIT.check();
+    if (!rl.allowed) throw new Error("Too many attempts. Try again in " + rl.waitSeconds + "s.");
+
     const { data, error } = await db.auth.signInWithPassword({
       email: emailFromUsername(username),
       password,
     });
 
     if (error) {
+      RATELIMIT.recordFailure();
       const msg = error.message || error.msg || error.error_description || JSON.stringify(error);
       if (msg.includes("Invalid login") || msg.includes("invalid")) {
         throw new Error("Invalid username or password.");
@@ -53,6 +62,7 @@ const AUTH = (() => {
       throw new Error(msg || "Login failed. Check your credentials.");
     }
 
+    RATELIMIT.clear();
     return data;
   }
 

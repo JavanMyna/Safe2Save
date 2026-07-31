@@ -5,7 +5,7 @@ const U = (() => {
     const s = abs.toFixed(2);
     const parts = s.split(".");
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    return (n < 0 ? "-" : "") + "RM " + parts.join(".");
+    return (n < 0 ? "-" : "") + "RM\u00a0" + parts.join(".");
   }
 
   function fmtDate(iso) {

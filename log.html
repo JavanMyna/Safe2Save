@@ -82,7 +82,9 @@
       <div class="form-group">
         <label>Category</label>
         <div class="cat-chips-wrap">
-        <div class="cat-chips" id="cat-chips"></div>
+          <button class="cat-scroll-arrow cat-scroll-left hidden" id="cat-scroll-left" aria-label="Scroll left">◀</button>
+          <div class="cat-chips" id="cat-chips"></div>
+          <button class="cat-scroll-arrow cat-scroll-right hidden" id="cat-scroll-right" aria-label="Scroll right">▶</button>
         </div>
         <div class="cat-create-row" id="cat-create" style="display:none;">
           <input type="text" id="cat-name" placeholder="Category name" maxlength="20" />
@@ -367,6 +369,35 @@
         showFreqFields(currFreq);
       });
     });
+
+
+    // ---- Category chip scroll arrows (desktop) ----
+    var chipRow = document.getElementById("cat-chips");
+    var arrowLeft = document.getElementById("cat-scroll-left");
+    var arrowRight = document.getElementById("cat-scroll-right");
+
+    function updateArrowState() {
+      if (!chipRow || !arrowLeft || !arrowRight) return;
+      var maxScroll = chipRow.scrollWidth - chipRow.clientWidth;
+      arrowLeft.classList.toggle("hidden", chipRow.scrollLeft <= 0);
+      arrowRight.classList.toggle("hidden", chipRow.scrollLeft >= maxScroll - 1);
+    }
+
+    if (arrowLeft && arrowRight && chipRow) {
+      arrowLeft.addEventListener("click", function() {
+        chipRow.scrollBy({ left: -200, behavior: "smooth" });
+      });
+      arrowRight.addEventListener("click", function() {
+        chipRow.scrollBy({ left: 200, behavior: "smooth" });
+      });
+      chipRow.addEventListener("scroll", updateArrowState);
+      window.addEventListener("resize", function() {
+        clearTimeout(window._catArrowTimer);
+        window._catArrowTimer = setTimeout(updateArrowState, 150);
+      });
+      // Initial state after chips are rendered — defer to next frame
+      requestAnimationFrame(function() { requestAnimationFrame(updateArrowState); });
+    }
 
     init();
   </script>

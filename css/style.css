@@ -621,6 +621,7 @@ textarea {
 .spend-row .spend-amount {
   font-weight: 600;
   color: var(--red);
+  white-space: nowrap;
 }
 
 .spend-row .spend-amount.income {
@@ -813,6 +814,20 @@ textarea {
   }
 }
 
+  .cat-chips-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .cat-chips-wrap::after {
+    display: none;
+  }
+
+  .cat-scroll-arrow {
+    display: flex;
+  }
+
 /* ---- Category chips ---- */
 .cat-chips-wrap { position: relative; }
 .cat-chips-wrap::after {
@@ -869,6 +884,34 @@ textarea {
 .cat-chip-add {
   border-style: dashed;
   color: var(--text-secondary);
+}
+
+/* ---- Category scroll arrows (desktop) ---- */
+.cat-scroll-arrow {
+  display: none;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  padding: 0;
+  line-height: 1;
+}
+
+.cat-scroll-arrow:active {
+  background: var(--bg);
+}
+
+.cat-scroll-arrow.hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* ---- Collapsible section ---- */

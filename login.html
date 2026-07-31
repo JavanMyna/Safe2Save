@@ -15,6 +15,7 @@
   <script src="js/supabase.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/ratelimit.js"></script>
 </head>
 <body class="auth-page">
   <div id="toast" class="toast"></div>
@@ -74,8 +75,37 @@
       document.getElementById("signup-form").style.display = "none";
       document.getElementById("login-form").style.display = "";
     });
+    var countdownTimer = null;
+
+    function startCountdown(seconds) {
+      var loginBtn = document.getElementById("login-submit");
+      var signupBtn = document.getElementById("signup-submit");
+      loginBtn.disabled = true;
+      signupBtn.disabled = true;
+
+      function tick() {
+        if (seconds <= 0) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          loginBtn.disabled = false;
+          signupBtn.disabled = false;
+          U.toast("");
+          return;
+        }
+        var label = seconds === 1 ? "second" : "seconds";
+        U.toast("Too many attempts. Try again in " + seconds + " " + label + ".", false);
+        seconds--;
+      }
+
+      if (countdownTimer) clearInterval(countdownTimer);
+      tick();
+      countdownTimer = setInterval(tick, 1000);
+    }
 
     document.getElementById("login-submit").addEventListener("click", async () => {
+      var rl = RATELIMIT.check();
+      if (!rl.allowed) { startCountdown(rl.waitSeconds); return; }
+
       const username = document.getElementById("login-username").value.trim();
       const password = document.getElementById("login-password").value;
 
@@ -90,6 +120,9 @@
     });
 
     document.getElementById("signup-submit").addEventListener("click", async () => {
+      var rl = RATELIMIT.check();
+      if (!rl.allowed) { startCountdown(rl.waitSeconds); return; }
+
       const username = document.getElementById("signup-username").value.trim();
       const password = document.getElementById("signup-password").value;
       const confirm = document.getElementById("signup-confirm").value;
@@ -112,6 +145,7 @@
         U.toast(err.message);
       }
     });
+
 
     // Enter key submits whichever form is visible
     document.addEventListener("keydown", (e) => {
