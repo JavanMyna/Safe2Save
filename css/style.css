@@ -618,19 +618,23 @@ textarea {
   border-bottom: none;
 }
 
-.spend-row .spend-amount {
+.spend-row .spend-amount,
+.tx-row .spend-amount {
   font-weight: 600;
   color: var(--red);
   white-space: nowrap;
 }
 
-.spend-row .spend-amount.income {
+.spend-row .spend-amount.income,
+.tx-row .spend-amount.income {
   color: var(--green);
 }
 
 /* ---- Transaction color toggle ---- */
 [data-tx-colors="off"] .spend-row .spend-amount,
-[data-tx-colors="off"] .spend-row .spend-amount.income {
+[data-tx-colors="off"] .spend-row .spend-amount.income,
+[data-tx-colors="off"] .tx-row .spend-amount,
+[data-tx-colors="off"] .tx-row .spend-amount.income {
   color: var(--text);
 }
 
