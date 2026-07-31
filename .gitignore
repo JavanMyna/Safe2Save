@@ -8,3 +8,6 @@ Icon?
 # Editor/IDE
 .vscode/
 *.swp
+
+#docs
+docs/

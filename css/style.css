@@ -1402,3 +1402,10 @@ textarea {
   color: var(--text-secondary);
 }
 .whatsnew-list li { margin-bottom: 0.3rem; }
+
+.copy-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}

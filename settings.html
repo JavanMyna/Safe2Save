@@ -162,12 +162,17 @@
     <div class="card">
       <h2>Data Export</h2>
       <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">
-        Download all your transactions for backup or analysis.
+        Copy your transactions to the clipboard for backup or analysis.
       </p>
-      <div style="display:flex;gap:0.5rem;">
-        <button class="btn btn-outline" id="export-csv">Export CSV</button>
-        <button class="btn btn-outline" id="export-json">Export JSON</button>
+      <div class="type-toggle" id="export-format-toggle" style="max-width:180px;margin-bottom:0.75rem;">
+        <button class="type-btn active" data-format="csv">CSV</button>
+        <button class="type-btn" data-format="json">JSON</button>
       </div>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-outline" id="copy-raw">Copy Raw Data</button>
+        <button class="btn btn-primary" id="copy-prompt">Copy AI Prompt</button>
+      </div>
+      <p class="copy-hint" id="copy-hint">Want to analyze your spending? Copy this and paste it into your favourite AI assistant.</p>
     </div>
 
     <div class="card">
@@ -181,6 +186,13 @@
 
     <div class="card">
   <h2>What's New</h2>
+
+  <div class="whatsnew-entry">
+    <div class="whatsnew-date">31 Jul 2026</div>
+    <ul class="whatsnew-list">
+      <li>Replaced file-download export with copy-to-clipboard (raw data or an AI-ready prompt)</li>
+    </ul>
+  </div>
 
   <div class="whatsnew-entry">
     <div class="whatsnew-date">24 Jul 2026</div>
@@ -237,6 +249,8 @@
   <script>
     let userId = null;
     var selectedDefaultView = "spending";
+    var cachedExportData = null;
+    var selectedExportFormat = "csv";
 
     async function init() {
       const session = await AUTH.requireAuth();
@@ -264,6 +278,7 @@
       });
 
       await loadSettings();
+      preloadExportData();
       loadRecurring();
     }
 
@@ -319,25 +334,110 @@
       U.toast("Settings saved!", true);
     });
 
-    document.getElementById("export-csv").addEventListener("click", async function() {
-      this.textContent = "Loading...";
+    // ---- Data Export helpers ----
+    async function preloadExportData() {
       var { data } = await db.from("transactions").select("*").eq("user_id", userId).order("occurred_on", { ascending: false });
-      if (!data || !data.length) { U.toast("No transactions to export."); this.textContent = "Export CSV"; return; }
+      cachedExportData = data || [];
+    }
+
+    function buildCSV(data) {
       var csv = "date,type,category,amount,note\n";
-      data.forEach(function(t) { csv += t.occurred_on + "," + t.type + "," + (t.category || "") + "," + t.amount + "," + '"' + (t.note || "").replace(/"/g, '""') + '"\n'; });
-      var blob = new Blob([csv], { type: "text/csv" });
-      var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "safe-to-save-export.csv"; a.click();
-      this.textContent = "Export CSV";
+      data.forEach(function(t) {
+        csv += t.occurred_on + "," + t.type + "," + (t.category || "") + "," + t.amount + "," + '"' + (t.note || "").replace(/"/g, '""') + '"\n';
+      });
+      return csv;
+    }
+
+    function buildJSON(data) {
+      return JSON.stringify(data, null, 2);
+    }
+
+    function buildExportString(data) {
+      if (selectedExportFormat === "csv") return buildCSV(data);
+      return buildJSON(data);
+    }
+
+    function copyToClipboard(text) {
+      // Try Clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).catch(function() {
+          // Clipboard API rejected — try fallback
+          fallbackCopy(text);
+        });
+      }
+      // Clipboard API not available — use fallback directly
+      try {
+        fallbackCopy(text);
+        return Promise.resolve();
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    }
+
+    function fallbackCopy(text) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try {
+        document.execCommand("copy");
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
+
+    // ---- Format toggle ----
+    document.querySelectorAll("#export-format-toggle .type-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        document.querySelectorAll("#export-format-toggle .type-btn").forEach(function(b) { b.classList.remove("active"); });
+        this.classList.add("active");
+        selectedExportFormat = this.dataset.format;
+      });
     });
 
-    document.getElementById("export-json").addEventListener("click", async function() {
-      this.textContent = "Loading...";
-      var { data } = await db.from("transactions").select("*").eq("user_id", userId).order("occurred_on", { ascending: false });
-      if (!data || !data.length) { U.toast("No transactions to export."); this.textContent = "Export JSON"; return; }
-      var json = JSON.stringify(data, null, 2);
-      var blob = new Blob([json], { type: "application/json" });
-      var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "safe-to-save-export.json"; a.click();
-      this.textContent = "Export JSON";
+    // ---- Copy Raw Data ----
+    document.getElementById("copy-raw").addEventListener("click", function() {
+      if (!cachedExportData) { U.toast("Export data is still loading. Try again in a moment."); return; }
+      if (!cachedExportData.length) { U.toast("No transactions to export."); return; }
+
+      var btn = this;
+      btn.disabled = true;
+      var text = buildExportString(cachedExportData);
+      copyToClipboard(text).then(function() {
+        U.toast("Raw data copied!", true);
+      }).catch(function() {
+        U.toast("Failed to copy to clipboard.");
+      }).then(function() {
+        btn.disabled = false;
+      });
+    });
+
+    // ---- Copy AI Prompt ----
+    document.getElementById("copy-prompt").addEventListener("click", function() {
+      if (!cachedExportData) { U.toast("Export data is still loading. Try again in a moment."); return; }
+      if (!cachedExportData.length) { U.toast("No transactions to export."); return; }
+
+      var btn = this;
+      btn.disabled = true;
+      var fmt = selectedExportFormat === "csv" ? "CSV" : "JSON";
+      var prompt = "Analyze my spending using the data below, exported from Safe2Save (a personal finance tracker for people with irregular income). Please:\n\n" +
+        "1. Identify overall spending patterns and trends over time.\n" +
+        "2. Highlight any unusual, one-off, or unexpectedly large expenses.\n" +
+        "3. Suggest specific, realistic budgeting improvements based on what you see.\n" +
+        "4. Give me a few actionable next steps I can act on this week.\n\n" +
+        "My exported transaction data is in " + fmt + " format (columns: date, type, category, amount, note):\n\n" +
+        buildExportString(cachedExportData);
+      copyToClipboard(prompt).then(function() {
+        U.toast("AI prompt copied!", true);
+      }).catch(function() {
+        U.toast("Failed to copy to clipboard.");
+      }).then(function() {
+        btn.disabled = false;
+      });
     });
 
     document.getElementById("logout-btn").addEventListener("click", async () => {
