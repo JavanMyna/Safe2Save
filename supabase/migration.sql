@@ -18,6 +18,8 @@
 --   alter table transactions add column recurring_transaction_id uuid references recurring_transactions(id);
 -- Phase 5: per-user default dashboard view (spending vs savings)
 --   alter table settings add column if not exists default_dashboard_view text not null default 'spending' check (default_dashboard_view in ('spending','savings'));
+-- Phase 6: transaction color toggle
+--   alter table settings add column if not exists show_transaction_colors boolean not null default true;
 -- ============================================================
 
 -- 1. Profiles table

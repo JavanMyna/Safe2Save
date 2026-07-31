@@ -628,6 +628,12 @@ textarea {
   color: var(--green);
 }
 
+/* ---- Transaction color toggle ---- */
+[data-tx-colors="off"] .spend-row .spend-amount,
+[data-tx-colors="off"] .spend-row .spend-amount.income {
+  color: var(--text);
+}
+
 .spend-row .spend-meta {
   font-size: 0.75rem;
   color: var(--text-secondary);

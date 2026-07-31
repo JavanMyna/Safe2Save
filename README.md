@@ -45,6 +45,8 @@ This project was designed primarily for mobile devices. While it works on deskto
 - Optional monthly budget pacing
 - Export all transactions to CSV or JSON — your data, your file, any time
 - Dark mode
+- Transaction color toggle (red for expenses, green for income) — turn it off in Settings if you prefer neutral text
+- Terms of Service and Privacy Policy linked from Settings and login
 
 ---
 
@@ -73,6 +75,8 @@ Safe2Save/
 ├── log.html            # Log a transaction
 ├── checkin.html         # Balance check-in / safe-to-save calculator
 ├── settings.html        # Preferences, budget, export, sign out
+├── terms.html          # Terms of Service
+├── privacy.html         # Privacy Policy
 ├── css/                  # Styles
 ├── js/
 │   ├── supabase.js       # Supabase client init (URL + anon key)

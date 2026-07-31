@@ -48,6 +48,13 @@
           <button class="type-btn" data-view="savings">Savings</button>
         </div>
       </div>
+      <div class="setting-row">
+        <span>Transaction Colors</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="tx-colors-toggle" checked />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
 
     <div class="card">
@@ -183,10 +190,45 @@
         spending patterns.
       </p>
     </div>
+    <div class="card">
+      <h2>Contact</h2>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+        Have a feature idea, found a bug, or just want to say hi? Reach out on Discord or email.
+      </p>
+      <div class="setting-row">
+        <span>Discord</span>
+        <span style="font-weight:600;">@javanmyna</span>
+      </div>
+      <div class="setting-row">
+        <span>Email</span>
+        <a href="mailto:javanmyna.dev@gmail.com" style="font-weight:600;color:var(--primary);">javanmyna.dev@gmail.com</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Legal</h2>
+      <div class="setting-row">
+        <a href="terms.html" style="color:var(--primary);">Terms of Service</a>
+        <span style="color:var(--text-secondary);">→</span>
+      </div>
+      <div class="setting-row">
+        <a href="privacy.html" style="color:var(--primary);">Privacy Policy</a>
+        <span style="color:var(--text-secondary);">→</span>
+      </div>
+    </div>
 
     <div class="card">
   <h2>What's New</h2>
 
+
+  <div class="whatsnew-entry">
+    <div class="whatsnew-date">1 Aug 2026</div>
+    <ul class="whatsnew-list">
+      <li>Added transaction color toggle in Settings — turn red/green amounts on or off</li>
+      <li>Added Contact section (Discord + email) in Settings</li>
+      <li>Added Terms of Service and Privacy Policy</li>
+    </ul>
+  </div>
   <div class="whatsnew-entry">
     <div class="whatsnew-date">31 Jul 2026</div>
     <ul class="whatsnew-list">
@@ -272,6 +314,17 @@
         }
       });
 
+      document.getElementById("tx-colors-toggle").addEventListener("change", function() {
+        var on = this.checked;
+        localStorage.setItem("txColors", on ? "on" : "off");
+        if (on) document.documentElement.removeAttribute("data-tx-colors");
+        else document.documentElement.setAttribute("data-tx-colors", "off");
+        // Fire-and-forget save to Supabase (non-blocking cosmetic preference)
+        db.from("settings").upsert({ user_id: userId, show_transaction_colors: on }).then(function(r) {
+          if (r.error) console.warn("Failed to save color preference:", r.error);
+        });
+      });
+
       document.querySelectorAll("#default-view-toggle .type-btn").forEach(function(btn) {
         btn.addEventListener("click", function() {
           document.querySelectorAll("#default-view-toggle .type-btn").forEach(function(b) { b.classList.remove("active"); });
@@ -299,6 +352,11 @@
           document.getElementById("monthly-budget").value = parseFloat(data.monthly_budget);
         }
         selectedDefaultView = data.default_dashboard_view || "spending";
+        var showTxColors = data.show_transaction_colors !== false; // default true
+        document.getElementById("tx-colors-toggle").checked = showTxColors;
+        localStorage.setItem("txColors", showTxColors ? "on" : "off");
+        if (!showTxColors) document.documentElement.setAttribute("data-tx-colors", "off");
+        else document.documentElement.removeAttribute("data-tx-colors");
         document.querySelectorAll("#default-view-toggle .type-btn").forEach(function(btn) {
           btn.classList.toggle("active", btn.dataset.view === selectedDefaultView);
         });
@@ -327,6 +385,7 @@
           starting_daily_estimate: startingEstimate,
           monthly_budget: monthlyBudget,
           default_dashboard_view: selectedDefaultView,
+          show_transaction_colors: document.getElementById("tx-colors-toggle").checked,
         });
 
       if (error) {

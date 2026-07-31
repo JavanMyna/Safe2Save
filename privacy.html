@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Safe-to-Save — Privacy Policy</title>
+  <link rel="icon" type="image/x-icon" href="favicon/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png" />
+  <link rel="manifest" href="favicon/site.webmanifest" />
+  <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png" />
+  <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .legal-content { font-size: 0.9rem; line-height: 1.7; color: var(--text); }
+    .legal-content h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; color: var(--text); }
+    .legal-content h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; color: var(--text-secondary); }
+    .legal-content p, .legal-content ul { margin-bottom: 0.75rem; }
+    .legal-content ul { padding-left: 1.25rem; }
+    .legal-content li { margin-bottom: 0.25rem; }
+    .legal-content .last-updated { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <span class="nav-title">Privacy Policy</span>
+    <div class="desktop-nav">
+      <a href="index.html">Home</a>
+      <a href="terms.html">Terms of Service</a>
+    </div>
+    <a href="javascript:history.back()" class="nav-btn nav-mobile-only">Back</a>
+  </nav>
+
+  <main class="page">
+    <div class="card legal-content">
+      <p class="last-updated">Last updated: 1 August 2026</p>
+
+      <h2>1. Introduction</h2>
+      <p>
+        Safe-to-Save ("the Service", "we", "our") is committed to protecting your privacy.
+        This Privacy Policy explains what information we collect, how we use it, and your
+        rights regarding your data.
+      </p>
+      <p>
+        The Service is a personal finance tracker. It is not a commercial product — there
+        are no ads, no analytics services, and no data monetization of any kind.
+      </p>
+
+      <h2>2. Information We Collect</h2>
+      <p>When you use Safe-to-Save, we collect the following information:</p>
+      <ul>
+        <li><strong>Account information:</strong> A synthetic email address and password you
+          choose for authentication. These are not real email addresses and are stored by
+          Supabase Auth.</li>
+        <li><strong>Transaction data:</strong> Amounts, categories, notes, dates, and types
+          (income or expense) that you manually enter.</li>
+        <li><strong>Recurring transaction data:</strong> Templates for repeating income or
+          expenses, including frequency and schedule.</li>
+        <li><strong>Balance check-ins:</strong> Bank balances you enter, along with calculated
+          values (average daily spend, floor amount, safe-to-save amount).</li>
+        <li><strong>Settings and preferences:</strong> Runway days, starting daily estimate,
+          monthly budget, default dashboard view, custom categories, theme preference, and
+          transaction color preference.</li>
+      </ul>
+      <p>
+        <strong>We do not collect:</strong> real names, real email addresses, physical addresses,
+        phone numbers, bank account numbers, or any data from your financial institutions.
+      </p>
+
+      <h2>3. How We Store Your Data</h2>
+      <p>
+        All data is stored in a Supabase PostgreSQL database. Supabase provides encryption
+        at rest and in transit (TLS). Database access is governed by Row-Level Security (RLS)
+        policies that restrict each user to their own data — you can only see and modify your
+        own records.
+      </p>
+      <p>
+        Authentication tokens are stored as HTTP-only cookies managed by Supabase Auth.
+      </p>
+
+      <h2>4. How We Use Your Data</h2>
+      <p>Your data is used solely to provide the Service's features:</p>
+      <ul>
+        <li>Calculating the "safe to save" amount based on your spending patterns</li>
+        <li>Displaying spending charts and transaction history on your dashboard</li>
+        <li>Projecting month-end balances based on recurring items</li>
+        <li>Syncing your data across your own devices when you sign in</li>
+        <li>Exporting your data in CSV or JSON format when you request it</li>
+      </ul>
+      <p>
+        We do not use your data for any other purpose. There is no automated decision-making
+        or profiling beyond the calculations you explicitly request.
+      </p>
+
+      <h2>5. Data Sharing</h2>
+      <p>
+        <strong>We do not sell, rent, trade, or share your data with any third party.</strong>
+        Your data stays in the Supabase database and is accessible only to you through the
+        Service's authenticated interface.
+      </p>
+      <p>
+        The Service relies on Supabase as a data processor. Supabase's privacy practices are
+        governed by their own privacy policy and data processing agreement. No other third-party
+        services receive your data.
+      </p>
+
+      <h2>6. Cookies and Tracking</h2>
+      <p>
+        The Service uses one essential cookie: the Supabase authentication session token.
+        This cookie is necessary for the Service to function — it keeps you signed in.
+      </p>
+      <p>
+        <strong>We do not use:</strong> analytics cookies, advertising cookies, tracking pixels,
+        fingerprinting, or any form of user behavior tracking. There are no third-party scripts
+        beyond the Supabase client library and Chart.js (loaded from CDN for chart rendering).
+      </p>
+
+      <h2>7. Data Retention</h2>
+      <p>
+        Your data is retained as long as your account exists. If you delete your account or
+        request data deletion, your records will be removed from the database.
+      </p>
+      <p>
+        You can export all your transaction data at any time from the Settings page in CSV
+        or JSON format.
+      </p>
+
+      <h2>8. Your Rights</h2>
+      <p>You have the right to:</p>
+      <ul>
+        <li><strong>Access:</strong> View all your data through the Service's interface or
+          export it from Settings.</li>
+        <li><strong>Correct:</strong> Edit or delete individual transactions at any time.</li>
+        <li><strong>Delete:</strong> Request deletion of your account and all associated data
+          by contacting us.</li>
+        <li><strong>Portability:</strong> Export your data in a structured, machine-readable
+          format (CSV or JSON) from Settings.</li>
+      </ul>
+
+      <h2>9. Data Security</h2>
+      <p>
+        We take reasonable measures to protect your data, including:
+      </p>
+      <ul>
+        <li>Row-Level Security on every database table, ensuring you can only access your
+          own records</li>
+        <li>TLS encryption for all data in transit</li>
+        <li>Encryption at rest provided by Supabase</li>
+        <li>No administrative backdoors — the Service creator cannot view your data through
+          the application</li>
+      </ul>
+      <p>
+        No method of electronic storage is 100% secure. While we strive to protect your data,
+        we cannot guarantee absolute security.
+      </p>
+
+      <h2>10. Children's Privacy</h2>
+      <p>
+        The Service is not directed at children under 13. We do not knowingly collect
+        information from children under 13. If you believe a child has provided us with
+        personal data, please contact us.
+      </p>
+
+      <h2>11. Changes to This Policy</h2>
+      <p>
+        We may update this Privacy Policy from time to time. Material changes will be noted
+        in the "What's New" section within the Service. Continued use after changes
+        constitutes acceptance of the updated policy.
+      </p>
+
+      <h2>12. Contact</h2>
+      <p>
+        For questions about this Privacy Policy or to request data deletion, contact:
+        <a href="mailto:javanmyna.dev@gmail.com">javanmyna.dev@gmail.com</a>
+      </p>
+    </div>
+  </main>
+</body>
+</html>

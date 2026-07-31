@@ -10,6 +10,7 @@
   <link rel="manifest" href="favicon/site.webmanifest" />
   <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png" />
   <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
+  <script>(function(){if(localStorage.getItem('txColors')==='off')document.documentElement.setAttribute('data-tx-colors','off');})();</script>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
@@ -597,9 +598,18 @@
       }
     }
 
-    var budgetSettings = null;
     async function loadBudgetSettings() {
-      try { var { data } = await db.from("settings").select("monthly_budget, default_dashboard_view").eq("user_id", userId).single(); budgetSettings = data; } catch(e) { budgetSettings = null; }
+      try {
+        var { data } = await db.from("settings").select("monthly_budget, default_dashboard_view, show_transaction_colors").eq("user_id", userId).single();
+        budgetSettings = data;
+        // Apply color toggle — source of truth is Supabase
+        if (data) {
+          var showColors = data.show_transaction_colors !== false;
+          localStorage.setItem("txColors", showColors ? "on" : "off");
+          if (showColors) document.documentElement.removeAttribute("data-tx-colors");
+          else document.documentElement.setAttribute("data-tx-colors", "off");
+        }
+      } catch(e) { budgetSettings = null; }
     }
 
     function applyDefaultView() {

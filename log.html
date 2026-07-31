@@ -10,6 +10,7 @@
   <link rel="manifest" href="favicon/site.webmanifest" />
   <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png" />
   <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
+  <script>(function(){if(localStorage.getItem('txColors')==='off')document.documentElement.setAttribute('data-tx-colors','off');})();</script>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
@@ -239,6 +240,18 @@
       var session = await AUTH.requireAuth();
       if (!session) return;
       userId = session.user.id;
+
+      // Load color toggle preference
+      try {
+        var { data: pref } = await db.from("settings").select("show_transaction_colors").eq("user_id", userId).single();
+        if (pref) {
+          var showColors = pref.show_transaction_colors !== false;
+          localStorage.setItem("txColors", showColors ? "on" : "off");
+          if (showColors) document.documentElement.removeAttribute("data-tx-colors");
+          else document.documentElement.setAttribute("data-tx-colors", "off");
+        }
+      } catch(e) { /* non-critical — use localStorage fallback */ }
+
       // Pull custom categories from Supabase before rendering — ensures
       // categories created on other devices show up (Bug 3).
       await CAT.syncFromServer(db, userId);
