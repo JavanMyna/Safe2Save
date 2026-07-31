@@ -113,7 +113,7 @@ Currently at v1.5 and actively evolving as I use it day to day. It's a personal 
 
 ## License
 
-Not yet licensed — all rights reserved by default until a LICENSE file is added. Get in touch if you'd like to use or fork this.
+MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
