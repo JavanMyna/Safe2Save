@@ -113,13 +113,13 @@ Currently at v1.5 and actively evolving as I use it day to day. It's a personal 
 
 ## License
 
-Not yet licensed — all rights reserved by default until a LICENSE file is added. Get in touch if you'd like to use or fork this.
+MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
 ## Development Process
 
-Most features start with a written brief where I outline the requirements, edge cases, and constraints. I then use na LLM to help implement the feature, review the generated code, test it and make any necessary fixes or improvements.
+Most features start with a written brief where I outline the requirements, edge cases, and constraints. I then use an LLM to help implement the feature, review the generated code, test it and make any necessary fixes or improvements.
 
 While AI helps speed up development, I still handle the debugging, verification and final decisions.
 
