@@ -445,7 +445,7 @@
                 '<button class="tx-action-btn" data-edit="' + t.id + '" title="Edit">&#9998;</button>' +
                 '<button class="tx-action-btn danger" data-del="' + t.id + '" title="Delete">&#128465;</button>' +
               '</div>' +
-              '<div class="spend-amount currency' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+ ' : '− ') + U.fmtMYR(t.amount) + '</div>' +
+              '<div class="spend-amount currency' + (isIncome ? ' income' : '') + '">' + (function() { var txColorsOff = document.documentElement.hasAttribute('data-tx-colors'); return isIncome ? (txColorsOff ? '+ ' : '') : '− '; })() + U.fmtMYR(t.amount) + '</div>' +
             '</div>' +
           '</div>' +
         '</div>';

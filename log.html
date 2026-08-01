@@ -303,7 +303,7 @@
       totalEl.style.display = "";
       container.innerHTML = data.map(function(t) {
         var isIncome = t.type === "income";
-        return '<div class="spend-row"><div>' + (t.category ? '<span class="spend-category" style="border-left:3px solid ' + CAT.colorFor(t.category) + ';">' + U.escHtml(t.category) + '</span>' : "") + (t.note ? '<span class="spend-meta">' + U.escHtml(t.note) + '</span>' : "") + '</div><div class="spend-amount currency' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '−') + ' ' + U.fmtMYR(t.amount) + '</div></div>';
+        return '<div class="spend-row"><div>' + (t.category ? '<span class="spend-category" style="border-left:3px solid ' + CAT.colorFor(t.category) + ';">' + U.escHtml(t.category) + '</span>' : "") + (t.note ? '<span class="spend-meta">' + U.escHtml(t.note) + '</span>' : "") + '</div><div class="spend-amount currency' + (isIncome ? ' income' : '') + '">' + (function() { var txColorsOff = document.documentElement.hasAttribute('data-tx-colors'); return isIncome ? (txColorsOff ? '+ ' : '') : '− '; })() + U.fmtMYR(t.amount) + '</div></div>';
       }).join("");
     }
 
