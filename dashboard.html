@@ -384,6 +384,7 @@
     function bindSwipe(el, txId) {
       var content = el.querySelector(".tx-content");
       var startX = 0, startY = 0, movedX = 0, movedY = 0, isDragging = false;
+      var SWIPE_CLASSES = ["sw-left-33","sw-left-66","sw-left-100","sw-right-33","sw-right-66","sw-right-100"];
       content.addEventListener("touchstart", function(e) {
         if (e.touches.length !== 1) return;
         startX = e.touches[0].clientX;
@@ -397,14 +398,28 @@
         movedX = e.touches[0].clientX - startX;
         movedY = e.touches[0].clientY - startY;
         content.style.transform = "translateX(" + movedX + "px)";
+        var absX = Math.abs(movedX);
+        el.classList.remove.apply(el.classList, SWIPE_CLASSES);
+        if (absX >= 120) {
+          el.classList.add(movedX < 0 ? "sw-left-100" : "sw-right-100");
+        } else if (absX >= 80) {
+          el.classList.add(movedX < 0 ? "sw-left-66" : "sw-right-66");
+        } else if (absX >= 40) {
+          el.classList.add(movedX < 0 ? "sw-left-33" : "sw-right-33");
+        }
       }, { passive: false });
       content.addEventListener("touchend", function() {
         isDragging = false;
-        if (Math.abs(movedX) > Math.abs(movedY) && movedX < -120) { deleteTx(txId); }
-        else if (Math.abs(movedX) > Math.abs(movedY) && movedX > 120) { window.location.href = "log.html?edit=" + txId; }
+        el.classList.remove.apply(el.classList, SWIPE_CLASSES);
+        if (Math.abs(movedX) > Math.abs(movedY) && movedX < -120) { window.location.href = "log.html?edit=" + txId; }
+        else if (Math.abs(movedX) > Math.abs(movedY) && movedX > 120) { deleteTx(txId); }
         else { content.style.transform = ""; }
       });
-      content.addEventListener("touchcancel", function() { isDragging = false; content.style.transform = ""; });
+      content.addEventListener("touchcancel", function() {
+        isDragging = false;
+        content.style.transform = "";
+        el.classList.remove.apply(el.classList, SWIPE_CLASSES);
+      });
     }
 
     async function deleteTx(txId) {
