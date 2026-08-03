@@ -1011,6 +1011,45 @@ textarea {
   min-height: 3.2rem;
 }
 
+/* ---- Swipe progressive feedback ---- */
+.sw-left-33 .swipe-bg .bg-edit,
+.sw-left-66 .swipe-bg .bg-edit,
+.sw-left-100 .swipe-bg .bg-edit,
+.sw-right-33 .swipe-bg .bg-delete,
+.sw-right-66 .swipe-bg .bg-delete,
+.sw-right-100 .swipe-bg .bg-delete {
+  transition: opacity 0.1s ease, transform 0.1s ease;
+}
+
+.sw-left-33 .swipe-bg .bg-edit,
+.sw-right-33 .swipe-bg .bg-delete {
+  opacity: 0.33;
+  transform: scale(0.9);
+}
+
+.sw-left-66 .swipe-bg .bg-edit,
+.sw-right-66 .swipe-bg .bg-delete {
+  opacity: 0.66;
+  transform: scale(0.95);
+}
+
+.sw-left-100 .swipe-bg .bg-edit,
+.sw-right-100 .swipe-bg .bg-delete {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.sw-left-100 .swipe-bg .bg-edit,
+.sw-right-100 .swipe-bg .bg-delete {
+  animation: swipe-pulse 0.3s ease;
+}
+
+@keyframes swipe-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
 .tx-row .tx-content:active {
   transition: none;
 }
