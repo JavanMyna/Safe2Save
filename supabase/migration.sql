@@ -20,6 +20,8 @@
 --   alter table settings add column if not exists default_dashboard_view text not null default 'spending' check (default_dashboard_view in ('spending','savings'));
 -- Phase 6: transaction color toggle
 --   alter table settings add column if not exists show_transaction_colors boolean not null default true;
+-- Phase 7: transaction edit/delete control mode (swipe/buttons/both)
+--   alter table settings add column if not exists transaction_controls text not null default 'both' constraint transaction_controls_check check (transaction_controls in ('swipe','buttons','both'));
 -- ============================================================
 
 -- 1. Profiles table

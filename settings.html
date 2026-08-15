@@ -55,6 +55,17 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
+      <div class="setting-row">
+        <span>Edit &amp; Delete Controls</span>
+        <div class="type-toggle" id="edit-controls-toggle" style="max-width:260px;">
+          <button class="type-btn" data-mode="swipe">Swipe</button>
+          <button class="type-btn" data-mode="buttons">Buttons</button>
+          <button class="type-btn" data-mode="both">Both</button>
+        </div>
+      </div>
+      <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">
+        Swipe requires a touchscreen — falls back to buttons otherwise.
+      </p>
     </div>
 
     <div class="card">
@@ -219,6 +230,12 @@
 
     <div class="card">
   <h2>What's New</h2>
+  <div class="whatsnew-entry">
+    <div class="whatsnew-date">15 Aug 2026</div>
+    <ul class="whatsnew-list">
+      <li>Added Edit &amp; Delete Controls in Settings — choose Swipe, Buttons, or Both to decide how you edit or delete transactions from the dashboard</li>
+    </ul>
+  </div>
 
   <div class="whatsnew-entry">
     <div class="whatsnew-date">3 Aug 2026</div>
@@ -300,6 +317,7 @@
   <script>
     let userId = null;
     var selectedDefaultView = "spending";
+    var selectedTxControls = "both";
     var cachedExportData = null;
     var selectedExportFormat = "csv";
 
@@ -338,6 +356,18 @@
           selectedDefaultView = this.dataset.view;
         });
       });
+      document.querySelectorAll("#edit-controls-toggle .type-btn").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          document.querySelectorAll("#edit-controls-toggle .type-btn").forEach(function(b) { b.classList.remove("active"); });
+          this.classList.add("active");
+          selectedTxControls = this.dataset.mode;
+          localStorage.setItem("txControls", selectedTxControls);
+          // Fire-and-forget save to Supabase (non-blocking preference)
+          db.from("settings").upsert({ user_id: userId, transaction_controls: selectedTxControls }).then(function(r) {
+            if (r.error) console.warn("Failed to save edit-control preference:", r.error);
+          });
+        });
+      });
 
       await loadSettings();
       preloadExportData();
@@ -363,6 +393,12 @@
         localStorage.setItem("txColors", showTxColors ? "on" : "off");
         if (!showTxColors) document.documentElement.setAttribute("data-tx-colors", "off");
         else document.documentElement.removeAttribute("data-tx-colors");
+        var editControls = data.transaction_controls || "both";
+        selectedTxControls = editControls;
+        localStorage.setItem("txControls", editControls);
+        document.querySelectorAll("#edit-controls-toggle .type-btn").forEach(function(btn) {
+          btn.classList.toggle("active", btn.dataset.mode === editControls);
+        });
         document.querySelectorAll("#default-view-toggle .type-btn").forEach(function(btn) {
           btn.classList.toggle("active", btn.dataset.view === selectedDefaultView);
         });
@@ -392,6 +428,7 @@
           monthly_budget: monthlyBudget,
           default_dashboard_view: selectedDefaultView,
           show_transaction_colors: document.getElementById("tx-colors-toggle").checked,
+          transaction_controls: selectedTxControls,
         });
 
       if (error) {
