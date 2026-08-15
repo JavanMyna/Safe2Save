@@ -114,5 +114,11 @@ const U = (() => {
     }, 0);
   }
 
-  return { fmtMYR, fmtDate, fmtDateShort, todayStr, daysAgoStr, daysBetween, localDateStr, toast, escHtml, isRealSpend, spendTotal, addMonthsSafe, nextOccurrence, coversThrough };
+  // True when the device has touch input. Keep in sync with the inline
+  // check in dashboard.html <head> (U isn't loaded there yet).
+  function hasTouch() {
+    return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  }
+
+  return { fmtMYR, fmtDate, fmtDateShort, todayStr, daysAgoStr, daysBetween, localDateStr, toast, escHtml, isRealSpend, spendTotal, addMonthsSafe, nextOccurrence, coversThrough, hasTouch };
 })();
