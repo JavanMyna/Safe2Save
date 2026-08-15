@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png" />
   <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
   <script>(function(){if(localStorage.getItem('txColors')==='off')document.documentElement.setAttribute('data-tx-colors','off');})();</script>
+  <script>(function(){/* keep in sync with U.hasTouch() */var m=localStorage.getItem('txControls');var t=('ontouchstart' in window)||(navigator.maxTouchPoints>0);if(m==='swipe'&&!t)m='buttons';if(m==='swipe'||m==='buttons')document.documentElement.setAttribute('data-tx-controls',m);})();</script>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
@@ -470,9 +471,10 @@
           '</div>' +
         '</div>';
       }).join("");
+      var controlsMode = document.documentElement.getAttribute("data-tx-controls") || "both";
       container.querySelectorAll(".tx-row").forEach(function(row) {
         var txId = row.querySelector("[data-edit]") ? row.querySelector("[data-edit]").dataset.edit : "";
-        bindSwipe(row, txId);
+        if (controlsMode !== "buttons") bindSwipe(row, txId);
         row.querySelector("[data-edit]").addEventListener("click", function(e) {
           e.stopPropagation();
           window.location.href = "log.html?edit=" + this.dataset.edit;
@@ -620,7 +622,7 @@
 
     async function loadBudgetSettings() {
       try {
-        var { data } = await db.from("settings").select("monthly_budget, default_dashboard_view, show_transaction_colors").eq("user_id", userId).single();
+        var { data } = await db.from("settings").select("monthly_budget, default_dashboard_view, show_transaction_colors, transaction_controls").eq("user_id", userId).single();
         budgetSettings = data;
         // Apply color toggle — source of truth is Supabase
         if (data) {
@@ -628,6 +630,12 @@
           localStorage.setItem("txColors", showColors ? "on" : "off");
           if (showColors) document.documentElement.removeAttribute("data-tx-colors");
           else document.documentElement.setAttribute("data-tx-colors", "off");
+          // Keep in sync with U.hasTouch().
+          var rawControls = data.transaction_controls || "both";
+          var controls = (rawControls === "swipe" && !U.hasTouch()) ? "buttons" : rawControls;
+          localStorage.setItem("txControls", rawControls);
+          if (controls === "both") document.documentElement.removeAttribute("data-tx-controls");
+          else document.documentElement.setAttribute("data-tx-controls", controls);
         }
       } catch(e) { budgetSettings = null; }
     }
