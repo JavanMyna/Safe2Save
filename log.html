@@ -180,9 +180,8 @@
     function saveCustomCategories(arr) {
       localStorage.setItem("customCats", JSON.stringify(arr));
       if (!userId) return;
-      // Write emoji + deterministic colour to Supabase so synced devices
-      // get the same appearance (see CAT.syncFromServer / CAT.hashColor).
-      var cats = arr.map(function(c) { return { name: c.name, emoji: c.emoji || "📦", color: c.color || CAT.hashColor(c.name) }; });
+      // Write name + emoji only; color is palette-derived at render time.
+      var cats = arr.map(function(c) { return { name: c.name, emoji: c.emoji || "📦" }; });
       try { db.from("settings").upsert({ user_id: userId, custom_categories: cats }); } catch(e) {}
     }
 
@@ -224,7 +223,7 @@
         var emoji = document.getElementById("cat-emoji").value.trim() || "📦";
         var customs = getCustomCategories();
         if (customs.some(function(c) { return c.name === name; })) return U.toast("Already exists.");
-        customs.push({ name: name, emoji: emoji, color: CAT.hashColor(name) });
+        customs.push({ name: name, emoji: emoji });
         saveCustomCategories(customs);
         selectedCategory = name;
         document.getElementById("category").value = name;
