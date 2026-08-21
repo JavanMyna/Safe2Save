@@ -13,6 +13,7 @@
   --red: #EF4444;
   --red-light: #fee2e2;
   --accent: #6366F1;
+  --accent-fg: #6366F1;
   --bg: #f5f5f5;
   --surface: #ffffff;
   --text: #212121;
@@ -36,9 +37,15 @@
   --text: #F3F4F6;
   --text-secondary: #9CA3AF;
   --border: #262626;
+  --accent-fg: #7C9CFF;
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 36px rgba(0, 0, 0, 0.6);
 }
+
+[data-accent="crimson"]                        { --accent: #C62828; --accent-fg: #C62828; }
+[data-accent="crimson"][data-theme="dark"]     { --accent-fg: #EF5350; }
+/* no [data-accent="custom"] rule — the inline <head> snippet injects
+   --accent/--accent-fg directly; cascade falls back to Indigo otherwise */
 
 [data-theme="dark"] .auth-page {
   background: linear-gradient(160deg, #022c22 0%, #1A1A1A 40%, #0F0F0F 100%);
@@ -150,7 +157,7 @@ textarea {
 }
 
 .desktop-nav a.active {
-  color: var(--accent);
+  color: var(--accent-fg);
   background: var(--green-light);
 }
 
@@ -214,7 +221,7 @@ textarea {
 }
 
 .tab-bar a.active {
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .tab-bar a .tab-icon {
@@ -290,7 +297,7 @@ textarea {
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-fg);
   box-shadow: 0 0 0 3px var(--green-light);
 }
 
@@ -532,7 +539,7 @@ textarea {
 .chart-total {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-fg);
   margin-bottom: 0.25rem;
 }
 
@@ -700,7 +707,7 @@ textarea {
 }
 
 .auth-toggle a {
-  color: var(--accent);
+  color: var(--accent-fg);
   text-decoration: none;
   font-weight: 600;
 }
@@ -1115,7 +1122,7 @@ html[data-tx-controls="swipe"] .tx-actions { display: none; }
 
 .search-bar input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-fg);
 }
 
 .filter-chips {
@@ -1458,7 +1465,7 @@ html[data-tx-controls="swipe"] .tx-actions { display: none; }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .rec-row-right {
@@ -1483,7 +1490,7 @@ html[data-tx-controls="swipe"] .tx-actions { display: none; }
 .whatsnew-date {
   font-size: 0.75rem;
   font-weight: 700;
-  color: var(--accent, #7c9cff);
+  color: var(--accent-fg, #7c9cff);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 0.4rem;
