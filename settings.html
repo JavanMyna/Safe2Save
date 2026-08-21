@@ -488,7 +488,7 @@
       document.getElementById("category-colors").innerHTML =
         rows + '<button class="btn btn-outline btn-sm" id="reset-all-colors" style="align-self:flex-end;">Reset all</button>';
       document.querySelectorAll("#category-colors input[type=color]").forEach(function(input) {
-        input.addEventListener("input", function() {
+        input.addEventListener("change", function() {
           CAT.setOverride(this.dataset.cat, this.value);
           renderColorOverrides();
           db.from("settings").upsert({ user_id: userId, category_color_overrides: CAT.getOverrides() }).then(function(r) {
@@ -642,6 +642,7 @@
           var hue = (typeof data.accent_hue === "number") ? data.accent_hue : 241;
           localStorage.setItem("accentHue", String(hue));
           document.getElementById("custom-accent-row").style.display = "";
+          document.getElementById("custom-accent-color").value = window.accentFor(hue, currentMode(), "fill");
           applyAccentTheme("custom", hue);
         } else {
           applyAccentTheme(appTheme);
