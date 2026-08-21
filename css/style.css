@@ -1192,6 +1192,18 @@ html[data-tx-controls="swipe"] .tx-actions { display: none; }
   padding: 0.5rem 0;
 }
 
+.palette-picker { display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-end; }
+.palette-chip {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.3rem 0.6rem; border: 1px solid var(--border); border-radius: 99px;
+  background: var(--surface); cursor: pointer; font-size: 0.78rem; font-weight: 600;
+  color: var(--text);
+}
+.palette-chip.active { border-color: var(--accent); }
+.palette-chip-strip { display: flex; gap: 1px; }
+.palette-chip-strip span { width: 10px; height: 10px; border-radius: 1px; }
+.color-override-row { display: flex; align-items: center; gap: 0.5rem; }
+
 .toggle-switch {
   position: relative;
   width: 48px;

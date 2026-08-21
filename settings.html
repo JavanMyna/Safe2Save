@@ -124,6 +124,32 @@
           <button class="type-btn" data-mode="both">Both</button>
         </div>
       </div>
+      <div class="setting-row">
+        <span>App Theme</span>
+        <div class="type-toggle" id="app-theme-toggle" style="max-width:220px;">
+          <button class="type-btn" data-accent="indigo">Default</button>
+          <button class="type-btn" data-accent="crimson">Crimson</button>
+          <button class="type-btn" data-accent="custom">Your Colour</button>
+        </div>
+      </div>
+      <div class="setting-row" id="custom-accent-row" style="display:none;">
+        <span>Your Colour</span>
+        <span style="display:flex;align-items:center;gap:0.5rem;">
+          <input type="color" id="custom-accent-color" value="#6366F1" />
+          <span id="accent-preview-fill" style="width:18px;height:18px;border-radius:4px;border:1px solid var(--border);"></span>
+          <span id="accent-preview-fg" style="width:18px;height:18px;border-radius:4px;border:1px solid var(--border);"></span>
+        </span>
+      </div>
+      <div class="setting-row" style="align-items:flex-start;">
+        <span>Category Palette</span>
+        <div class="palette-picker" id="palette-picker"></div>
+      </div>
+      <div class="setting-row" style="align-items:flex-start;">
+        <span>Category Colors</span>
+        <div class="palette-picker" id="category-colors">
+          <button class="btn btn-outline btn-sm" id="reset-all-colors" style="align-self:flex-end;">Reset all</button>
+        </div>
+      </div>
       <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">
         Swipe requires a touchscreen — falls back to buttons otherwise.
       </p>
@@ -388,6 +414,107 @@
     var cachedExportData = null;
     var selectedExportFormat = "csv";
 
+    function hexToHue(hex) {
+      var r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+      var max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min, h = 0;
+      if (d !== 0) {
+        if (max === r) h = 60 * (((g - b) / d) % 6);
+        else if (max === g) h = 60 * ((b - r) / d + 2);
+        else h = 60 * ((r - g) / d + 4);
+      }
+      h = ((h % 360) + 360) % 360;
+      return Math.round(h);
+    }
+
+    function currentMode() {
+      return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    }
+
+    function applyAccentTheme(theme, hue) {
+      var d = document.documentElement;
+      if (theme === "crimson") {
+        d.setAttribute("data-accent", "crimson");
+        d.style.removeProperty("--accent");
+        d.style.removeProperty("--accent-fg");
+      } else if (theme === "custom") {
+        var h = (typeof hue === "number" && !isNaN(hue)) ? hue : 241;
+        var mode = currentMode();
+        d.setAttribute("data-accent", "custom");
+        d.style.setProperty("--accent", window.accentFor(h, mode, "fill"));
+        d.style.setProperty("--accent-fg", window.accentFor(h, mode, "fg"));
+      } else {
+        d.removeAttribute("data-accent");
+        d.style.removeProperty("--accent");
+        d.style.removeProperty("--accent-fg");
+      }
+    }
+
+    function renderPreview() {
+      var hue = hexToHue(document.getElementById("custom-accent-color").value);
+      var mode = currentMode();
+      document.getElementById("accent-preview-fill").style.background = window.accentFor(hue, mode, "fill");
+      document.getElementById("accent-preview-fg").style.background = window.accentFor(hue, mode, "fg");
+    }
+
+    function renderPalettePicker() {
+      var active = CAT.getPaletteName();
+      var html = "";
+      CAT.PALETTE_KEYS.forEach(function(key) {
+        var first5 = CAT.PALETTES[key].slice(0,5).map(function(c){ return '<span style="background:' + c + ';"></span>'; }).join("");
+        html += '<div class="palette-chip' + (key === active ? " active" : "") + '" data-palette="' + key + '"><span class="palette-chip-strip">' + first5 + '</span>' + CAT.PALETTE_LABELS[key] + '</div>';
+      });
+      document.getElementById("palette-picker").innerHTML = html;
+      document.querySelectorAll("#palette-picker .palette-chip").forEach(function(chip) {
+        chip.addEventListener("click", function() {
+          CAT.setPalette(this.dataset.palette);
+          renderPalettePicker();
+          db.from("settings").upsert({ user_id: userId, category_palette: this.dataset.palette }).then(function(r) {
+            if (r.error) console.warn("Failed to save palette:", r.error);
+          });
+        });
+      });
+    }
+
+    function renderColorOverrides() {
+      var overrides = CAT.getOverrides();
+      var rows = "";
+      CAT.all().forEach(function(c) {
+        var current = overrides[c.name] || CAT.colorFor(c.name);
+        rows += '<div class="color-override-row"><span style="font-size:0.8rem;min-width:110px;text-align:right;">' + U.escHtml(c.name) + '</span>' +
+          '<input type="color" value="' + current + '" data-cat="' + U.escHtml(c.name) + '" />' +
+          (overrides[c.name] ? '<button class="btn btn-outline btn-sm" data-reset="' + U.escHtml(c.name) + '">reset</button>' : '') +
+          '</div>';
+      });
+      document.getElementById("category-colors").innerHTML =
+        rows + '<button class="btn btn-outline btn-sm" id="reset-all-colors" style="align-self:flex-end;">Reset all</button>';
+      document.querySelectorAll("#category-colors input[type=color]").forEach(function(input) {
+        input.addEventListener("input", function() {
+          CAT.setOverride(this.dataset.cat, this.value);
+          renderColorOverrides();
+          db.from("settings").upsert({ user_id: userId, category_color_overrides: CAT.getOverrides() }).then(function(r) {
+            if (r.error) console.warn("Failed to save overrides:", r.error);
+          });
+        });
+      });
+      document.querySelectorAll("#category-colors [data-reset]").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          CAT.clearOverride(this.dataset.reset);
+          renderColorOverrides();
+          db.from("settings").upsert({ user_id: userId, category_color_overrides: CAT.getOverrides() }).then(function(r) {
+            if (r.error) console.warn("Failed to save overrides:", r.error);
+          });
+        });
+      });
+      var resetAll = document.getElementById("reset-all-colors");
+      if (resetAll) resetAll.addEventListener("click", function() {
+        CAT.clearAllOverrides();
+        renderColorOverrides();
+        db.from("settings").upsert({ user_id: userId, category_color_overrides: {} }).then(function(r) {
+          if (r.error) console.warn("Failed to save overrides:", r.error);
+        });
+      });
+    }
+
     async function init() {
       const session = await AUTH.requireAuth();
       if (!session) return;
@@ -436,7 +563,44 @@
         });
       });
 
+      document.querySelectorAll("#app-theme-toggle .type-btn").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          document.querySelectorAll("#app-theme-toggle .type-btn").forEach(function(b) { b.classList.remove("active"); });
+          this.classList.add("active");
+          var theme = this.dataset.accent;
+          document.getElementById("custom-accent-row").style.display = (theme === "custom") ? "" : "none";
+          localStorage.setItem("appTheme", theme);
+          if (theme === "custom") {
+            var hue = hexToHue(document.getElementById("custom-accent-color").value);
+            localStorage.setItem("accentHue", String(hue));
+            applyAccentTheme("custom", hue);
+            db.from("settings").upsert({ user_id: userId, app_theme: "custom", accent_hue: hue }).then(function(r) {
+              if (r.error) console.warn("Failed to save accent:", r.error);
+            });
+          } else {
+            applyAccentTheme(theme);
+            db.from("settings").upsert({ user_id: userId, app_theme: theme }).then(function(r) {
+              if (r.error) console.warn("Failed to save accent:", r.error);
+            });
+          }
+          renderPreview();
+        });
+      });
+
+      document.getElementById("custom-accent-color").addEventListener("input", function() {
+        var hue = hexToHue(this.value);
+        localStorage.setItem("accentHue", String(hue));
+        applyAccentTheme("custom", hue);
+        renderPreview();
+        db.from("settings").upsert({ user_id: userId, app_theme: "custom", accent_hue: hue }).then(function(r) {
+          if (r.error) console.warn("Failed to save accent:", r.error);
+        });
+      });
+
       await loadSettings();
+      renderPalettePicker();
+      renderColorOverrides();
+      renderPreview();
       preloadExportData();
       loadRecurring();
     }
@@ -469,6 +633,24 @@
         document.querySelectorAll("#default-view-toggle .type-btn").forEach(function(btn) {
           btn.classList.toggle("active", btn.dataset.view === selectedDefaultView);
         });
+        var appTheme = data.app_theme || "indigo";
+        localStorage.setItem("appTheme", appTheme);
+        document.querySelectorAll("#app-theme-toggle .type-btn").forEach(function(btn) {
+          btn.classList.toggle("active", btn.dataset.accent === appTheme);
+        });
+        if (appTheme === "custom") {
+          var hue = (typeof data.accent_hue === "number") ? data.accent_hue : 241;
+          localStorage.setItem("accentHue", String(hue));
+          document.getElementById("custom-accent-row").style.display = "";
+          applyAccentTheme("custom", hue);
+        } else {
+          applyAccentTheme(appTheme);
+        }
+        var pal = data.category_palette || "triadic";
+        CAT.setPalette(pal);
+        if (data.category_color_overrides && typeof data.category_color_overrides === "object") {
+          localStorage.setItem("catOverrides", JSON.stringify(data.category_color_overrides));
+        }
       }
     }
 
