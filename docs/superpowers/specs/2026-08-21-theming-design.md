@@ -87,7 +87,7 @@ Concrete 15-color arrays are listed in the appendix (§A). The `legacy` palette 
 Category colors are used **graphically only** (donut slices, legend swatches, 3px category chip borders) — never as text. The dark surface is `--surface` = `#1A1A1A`; the light surface is `--surface` = `#ffffff`.
 
 - **Against dark surface (`#1A1A1A`):** all 7 palettes ≥3:1. Pastels pass this trivially.
-- **Against light surface (`#ffffff`):** 6 palettes ≥3:1. **`kawaii` ≥2.5:1** — an explicit, testable floor, not a vague "slightly" exception. The appendix kawaii hexes are illustrative pastels and are tuned (darkened) until they meet 2.5:1 while staying visually "cute"; slices additionally rely on the 2px `--surface` border for separation.
+- **Against light surface (`#ffffff`):** 6 palettes ≥3:1. **`kawaii` is the sole exception**, and its exception is numeric: every kawaii color has **relative luminance ≤0.75** (equivalent to ≥1.3:1 vs white), so no slice is near-white/invisible. True pastels (lum ~0.49–0.75) satisfy this; near-white tints (lum >0.75) do not.
 - **Mutual distinguishability:** within a palette, no two colors are perceptually identical (adjacent-slice separation is guaranteed by the 2px surface border, not by inter-slice contrast).
 
 The `kawaii` exception is the *only* deviation from the 3:1 floor and is pinned to a number; every other palette holds 3:1 against both surfaces.
@@ -294,7 +294,7 @@ The 8 pages with the inline head snippet are exactly: `dashboard.html`, `log.htm
 Run by serving the folder statically and checking in-browser (no test framework).
 
 1. **Grey bug** — with a custom category present on device A but empty `customCats` on device B (or after clearing localStorage), open dashboard: the custom category still gets a distinct, non-grey color in both the donut and legend.
-2. **Palette distinctness** — each of the 7 palettes renders visually distinct slices for ≥5 categories, in light and dark.
+2. **Palette distinctness + kawaii luminance** — each of the 7 palettes renders visually distinct slices for ≥5 categories, in light and dark. Additionally, every kawaii color has relative luminance ≤0.75 (≥1.3:1 vs white) — compute luminance in devtools/script for all 15 kawaii hexes; no slice is near-white.
 3. **No custom-vs-default collision** — with the full 7 default categories plus several custom categories, no *custom* category resolves to the same hex as any *default* category's fixed slot (ties back to §2 slot reservation). Custom-vs-custom collisions within the 8 hash slots are accepted by design (§2).
 4. **Override precedence** — set an override on "Food"; it wins over the palette everywhere (donut, legend, transaction rows, log chips). Reset it; it reverts to the palette color.
 5. **Accent live-switch** — switching Indigo/Crimson/Your Colour updates active tabs, chips, toggles, and FAB immediately with no reload; persists across reload.
@@ -321,6 +321,6 @@ Each row is the full 15-color array: `[0..6 fixed defaults] + [7..14 hash slots]
 - **ocean**
   `#0E7490 #0369A1 #1D4ED8 #0EA5E9 #22D3EE #155E75 #164E63 | #03045E #0077B6 #0096C7 #00B4D8 #48CAE4 #90E0EF #023E8A #083D77`
 - **kawaii**
-  `#FFB3C1 #FFD6A5 #FFE5EC #E8B4F8 #A2D2FF #F8C8DC #C9E4DE | #FBE7C6 #CDB4DB #A9DEF9 #FF9EBB #BDE0FE #FFF1A6 #B5EAD7 #D8C4FF`
+  `#FFB3C1 #FFD6A5 #FFCCD9 #E8B4F8 #A2D2FF #F8C8DC #BCE0D8 | #F5DDB6 #CDB4DB #A9DEF9 #FF9EBB #B7D4F5 #F4E079 #B5EAD7 #D8C4FF`
 
 Final hexes are confirmed/adjusted under the §2 contrast requirement and §8 checks; the structural rules (15 slots, 7 fixed + 8 hash, index reservation) are binding regardless of any hex tuning.
