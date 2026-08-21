@@ -84,8 +84,13 @@ Concrete 15-color arrays are listed in the appendix (§A). The `legacy` palette 
 
 ### Contrast requirement (binding)
 
-- Category colors are used **graphically only** (donut slices, legend swatches, 3px category chip borders) — never as text. Required contrast: **≥ 3:1 against both `#ffffff` (light surface) and `#1A1A1A` (dark surface)**.
-- Pastel palettes (`kawaii`) are allowed to trade off against this floor slightly, but each palette's colors are still tuned to be mutually distinguishable and legible against both surfaces; final hexes are gated by the contrast verification in §8.
+Category colors are used **graphically only** (donut slices, legend swatches, 3px category chip borders) — never as text. The dark surface is `--surface` = `#1A1A1A`; the light surface is `--surface` = `#ffffff`.
+
+- **Against dark surface (`#1A1A1A`):** all 7 palettes ≥3:1. Pastels pass this trivially.
+- **Against light surface (`#ffffff`):** 6 palettes ≥3:1. **`kawaii` ≥2.5:1** — an explicit, testable floor, not a vague "slightly" exception. The appendix kawaii hexes are illustrative pastels and are tuned (darkened) until they meet 2.5:1 while staying visually "cute"; slices additionally rely on the 2px `--surface` border for separation.
+- **Mutual distinguishability:** within a palette, no two colors are perceptually identical (adjacent-slice separation is guaranteed by the 2px surface border, not by inter-slice contrast).
+
+The `kawaii` exception is the *only* deviation from the 3:1 floor and is pinned to a number; every other palette holds 3:1 against both surfaces.
 
 ### Changes vs. today
 
@@ -133,57 +138,83 @@ Retain the existing `data-theme` attribute for light/dark. Add a **`data-accent`
 | `crimson` | Crimson |
 | `custom` | Your Colour (derived from a stored hue) |
 
-Each look defines `--accent` for light and dark. Only `--accent` changes; the semantic `--green`/`--red` (income/expense), backgrounds, surfaces, and text variables are untouched.
+Only accent colors change; the semantic `--green`/`--red` (income/expense), backgrounds, surfaces, and text variables are untouched.
 
-`--accent` is consumed in ~15 places, in two roles: (a) background with white text on top (`.chart-tab.active`, `.type-btn.active`, `.overview-tab.active`, `.filter-chip.active`, `.freq-chip.active`, `.toggle-switch` checked, `.fab`), and (b) foreground text on light/dark surfaces (`.desktop-nav a.active`, `.tab-bar a.active`, `.auth-toggle a`, `.rec-*` labels, input focus borders). A single `--accent` value must satisfy both roles per mode.
+### Two accent variables (required — not optional)
 
-### Concrete accents
+`--accent` is consumed in two roles that impose *incompatible* contrast requirements:
 
-| Look | Light `--accent` | Dark `--accent` |
+- **(a) Fill** — accent used as a background with white text on top (`.chart-tab.active`, `.type-btn.active`, `.overview-tab.active`, `.filter-chip.active`, `.freq-chip.active`, `.toggle-switch` checked, `.fab`). Requires **white text ≥4.5:1 against the accent** → the accent must be dark.
+- **(b) Foreground** — accent used as text/border on a surface (`.desktop-nav a.active`, `.tab-bar a.active`, `.auth-toggle a`, `.rec-*` labels, input focus borders, overview heading). Requires **accent ≥4.5:1 against the surface** → in dark mode the accent must be light.
+
+A single solid color **cannot** satisfy both ≥4.5:1 against pure white *and* ≥4.5:1 against near-black (the relative-luminance bands — ≤0.183 vs ≥0.211 — do not overlap). One variable would either wash out in dark mode (white-on-accent fails) or vanish against the dark surface (accent-as-text fails). The codebase already carries the clue: line 1486 uses `var(--accent, #7c9cff)` with a *lighter* dark-mode fallback.
+
+Therefore the accent splits into two variables:
+
+| Variable | Role | Constraint per mode |
 |---|---|---|
-| Indigo | `#6366F1` (unchanged) | `#6366F1` (unchanged) |
-| Crimson | `#C62828` | `#EF5350` |
-| Custom | computed from hue (below) | computed from hue (below) |
+| `--accent` | Fill (a) | contrast vs `#ffffff` ≥4.5, light *and* dark |
+| `--accent-fg` | Foreground (b) | contrast vs `#ffffff` (light) / `#1A1A1A` (dark) ≥4.5 |
 
-Indigo stays byte-for-byte as today — zero visual change for existing users.
+CSS usage is split accordingly:
+
+- **`--accent`** (fill): `.chart-tab.active`, `.type-btn.active`, `.overview-tab.active`, `.filter-chip.active` (bg + border), `.freq-chip.active` (bg + border), `.toggle-switch` checked, `.fab`.
+- **`--accent-fg`** (foreground): `.desktop-nav a.active`, `.tab-bar a.active`, `.auth-toggle a`, `.rec-row-*` labels, input focus borders, overview heading.
+
+### Concrete values
+
+| Look | Mode | `--accent` (fill) | `--accent-fg` (foreground) |
+|---|---|---|---|
+| Indigo | light | `#6366F1` (unchanged) | `#6366F1` (unchanged) |
+| Indigo | dark | `#6366F1` (unchanged) | `#7C9CFF` (was `#6366F1`) |
+| Crimson | light | `#C62828` | `#C62828` |
+| Crimson | dark | `#C62828` | `#EF5350` |
+| Custom | light | computed (below) | same as `--accent` |
+| Custom | dark | computed (below) | computed (below) |
+
+Indigo's *fill* stays `#6366F1` in both modes — zero change to filled controls for existing users. The one deliberate change: Indigo's dark-mode *foreground* moves from `#6366F1` (~4.05:1 against `#1A1A1A`, below AA) to `#7C9CFF` (~5.5:1). This is a small contrast fix, not a restyle, and it's the same value the code already hints at in the line-1486 fallback.
 
 ### Custom ("Your Colour") — pre-paint computation
 
-The stored value is a **hue integer 0–360** (`accentHue`), not a hex. It is resolved to a concrete `--accent` in the **inline `<head>` snippet**, synchronously, before first paint — the same treatment the existing light/dark snippet already gives. No FOUC.
+The stored value is a **hue integer 0–360** (`accentHue`), not a hex. It is resolved to concrete `--accent` and `--accent-fg` values in the **inline `<head>` snippet**, synchronously, before first paint — same treatment the existing light/dark snippet already gives. No FOUC.
 
-Computation (light mode `L=45%` start, dark mode `L=65%` start), S fixed at 65%:
+S fixed at 65%. Each role has exactly one target surface, so the search is well-defined and terminates:
 
 ```
-accentFor(hue, mode):
-  L = (mode == light) ? 45 : 65
-  loop (max 10 iterations):
-    hex = hsl(hue, 65%, L)
-    ratio = contrast(hex, white if light else #0F0F0F)
-    if ratio >= 4.5: return hex
-    L += (mode == light) ? -2 : +2
-  return hex   // clamped; see note below
+accentFor(hue, mode, role):
+  light:
+    // fill + foreground both target white surface → one dark value serves both
+    L = 45; while contrast(hsl(hue,65%,L), #ffffff) < 4.5: L -= 2   // floor 28
+  dark, role == fill:
+    // white text sits on the accent
+    L = 40; while contrast(hsl(hue,65%,L), #ffffff) < 4.5: L -= 2   // floor 24
+  dark, role == fg:
+    // accent text sits on the #1A1A1A surface
+    L = 60; while contrast(hsl(hue,65%,L), #1A1A1A) < 4.5: L += 2   // ceiling 78
 ```
 
-Clamping keeps S=65% and steps L into a safe band (light: down to ~28%; dark: up to ~75%) rather than a pure fixed-L formula, so low-luminance hues (yellow) and high-luminance hues (blue) both hit the target. The clamp is a ~15-line pure function duplicated inside the head snippet (self-contained, no external deps).
+The loops terminate inside the stated bounds for all hues 0–360: at the floor/ceiling the contrast target is already exceeded (e.g. `hsl(60,65%,24%)` dark-olive ≈7:1 vs white; `hsl(240,65%,78%)` light-blue ≈9:1 vs `#1A1A1A`). The floor/ceiling are safety clamps, not the operating point. The helper is a ~20-line pure function duplicated inside the head snippet (self-contained, no external deps).
 
-The head snippet also sets `data-accent="custom"` and writes the resolved hex inline via `document.documentElement.style.setProperty("--accent", hex)`. The `[data-accent="custom"]` CSS rule provides only a fallback value (e.g. indigo) for the no-JS/edge case; the inline value wins in normal operation.
+The head snippet sets `data-accent="custom"` and writes the resolved hexes inline via `document.documentElement.style.setProperty("--accent", …)` / `("--accent-fg", …)`. The `[data-accent="custom"]` CSS rule provides only fallback values (indigo) for the no-JS/edge case; inline values win in normal operation.
 
 ### `::root` typo fix (targeted)
 
-`css/style.css` line 9 declares variables under `::root`, an invalid selector that matches nothing — the light-mode variables only appear to work because of browser quirks/fallbacks. The accent layer depends on these variables, so this is corrected to `:root` as part of this work. This is a one-token fix; no other variable rework.
+`css/style.css` line 9 declares variables under `::root`, an invalid selector that matches nothing — the light-mode variables only appear to work because of browser quirks/fallbacks. The accent layer depends on these variables, so this is corrected to `:root` as part of this work. One-token fix; no other variable rework.
 
 ### CSS rules added
 
 ```css
-[data-accent="crimson"]              { --accent: #C62828; }
-[data-accent="crimson"][data-theme="dark"] { --accent: #EF5350; }
-[data-accent="custom"]               { --accent: #6366F1; } /* fallback; inline var wins */
+:root                                   { --accent: #6366F1; --accent-fg: #6366F1; }
+[data-theme="dark"]                     { --accent-fg: #7C9CFF; }  /* --accent stays #6366F1 */
+[data-accent="crimson"]                 { --accent: #C62828; --accent-fg: #C62828; }
+[data-accent="crimson"][data-theme="dark"] { --accent-fg: #EF5350; }
+[data-accent="custom"]                  { /* fallbacks; inline vars win */ }
 ```
 
 ### Affected files
 
-- `css/style.css` — `::root` → `:root`; add `data-accent` rules
-- Inline `<head>` snippet on all 8 pages (§6 file list) — read `appTheme`/`accentHue`, set `data-accent`, compute + inject custom `--accent`
+- `css/style.css` — `::root` → `:root`; add `--accent-fg`; repoint foreground selectors from `var(--accent)` to `var(--accent-fg)`; add `data-accent` rules
+- Inline `<head>` snippet on all 8 pages (§6 file list) — read `appTheme`/`accentHue`, set `data-accent`, compute + inject custom `--accent`/`--accent-fg`
 
 ---
 
@@ -191,7 +222,7 @@ The head snippet also sets `data-accent="custom"` and writes the resolved hex in
 
 New controls in the existing **Appearance** card:
 
-1. **App Theme** — three chips: `Default`, `Crimson`, `Your Colour`. Selecting `Your Colour` reveals a `<input type="color">` (renders `#rrggbb`; converted to hue on save).
+1. **App Theme** — three chips: `Default`, `Crimson`, `Your Colour`. Selecting `Your Colour` reveals a `<input type="color">` (renders `#rrggbb`; converted to hue on save) **plus a live-derived preview swatch** showing the actual `--accent` (fill) and `--accent-fg` that will ship in the current mode, computed by the same helper the head snippet uses. This shows the user what they'll actually get — the stored hue is re-derived at a fixed S=65% and a contrast-clamped L, so the preview differs from the raw picker swatch, especially near-greys.
 2. **Category Palette** — 7 swatch chips (each shows its palette's first 5 colors as a mini strip) + name; click to select; selected chip highlighted. Defaults to `Triadic`.
 3. **Category Colors** — a list of every category (7 defaults + custom cats). Each row: name + `<input type="color">` bound to its override, plus a small "reset" affordance per row (reverts that category to palette). A "Reset all" action clears the whole `catOverrides` map.
 
@@ -242,7 +273,7 @@ Server-authoritative, matching existing prefs: settings page loads from Supabase
 | File | Change |
 |---|---|
 | `js/categories.js` | `PALETTES` map; `colorFor` rewrite (no grey, palette + override + hash-slot); `hash`; `setPalette`/`getPalette`; `getOverrides`/`setOverride`/`clearOverride`/`clearAllOverrides`; `syncFromServer` (ignore legacy `color`) |
-| `css/style.css` | `::root` → `:root`; `data-accent` rules |
+| `css/style.css` | `::root` → `:root`; add `--accent-fg`; repoint foreground selectors to `var(--accent-fg)`; `data-accent` rules |
 | `settings.html` | Appearance card: theme/palette/override UI + handlers + load/save/sync |
 | `dashboard.html` | head snippet (accent + custom-hue); no render-logic change (`colorFor` already used) |
 | `log.html` | head snippet; `saveCustomCategories` stop writing `color`; custom-create drop `color` field |
@@ -263,11 +294,11 @@ Run by serving the folder statically and checking in-browser (no test framework)
 
 1. **Grey bug** — with a custom category present on device A but empty `customCats` on device B (or after clearing localStorage), open dashboard: the custom category still gets a distinct, non-grey color in both the donut and legend.
 2. **Palette distinctness** — each of the 7 palettes renders visually distinct slices for ≥5 categories, in light and dark.
-3. **No same-color collision in-session** — across the full default set + several custom categories, no two categories in the same session resolve to the same hex (ties back to §2 slot reservation).
+3. **No custom-vs-default collision** — with the full 7 default categories plus several custom categories, no *custom* category resolves to the same hex as any *default* category's fixed slot (ties back to §2 slot reservation). Custom-vs-custom collisions within the 8 hash slots are accepted by design (§2).
 4. **Override precedence** — set an override on "Food"; it wins over the palette everywhere (donut, legend, transaction rows, log chips). Reset it; it reverts to the palette color.
 5. **Accent live-switch** — switching Indigo/Crimson/Your Colour updates active tabs, chips, toggles, and FAB immediately with no reload; persists across reload.
 6. **Custom-hue FOUC** — set a custom hue, hard-reload dashboard: no flash of indigo/crimson before the custom accent paints (head snippet is synchronous).
-7. **Custom-hue contrast** — across a hue spread (e.g. 0, 30, 55, 120, 200, 270), the resolved accent meets ≥4.5:1 against its white-text-on-accent role in light mode and its foreground-on-dark-surface role in dark mode.
+7. **Custom-hue contrast, both roles, both modes** — across a hue spread (0, 30, 55, 120, 200, 270): (a) `--accent` fill meets ≥4.5:1 vs `#ffffff` in light *and* dark (white text legible); (b) `--accent-fg` meets ≥4.5:1 vs `#ffffff` in light and ≥4.5:1 vs `#1A1A1A` in dark. Test both variables independently — one passing does not imply the other.
 8. **Regression** — `computeRecommendation`, chart date-range alignment, and `isRealSpend`/spend-filtering are untouched; confirm the financial math and chart windows behave as before (no changes made to those code paths).
 
 ---
