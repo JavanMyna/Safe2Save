@@ -479,10 +479,10 @@
       var overrides = CAT.getOverrides();
       var rows = "";
       CAT.all().forEach(function(c) {
-        var current = overrides[c.name] || CAT.colorFor(c.name);
+        var current = Object.prototype.hasOwnProperty.call(overrides, c.name) ? overrides[c.name] : CAT.colorFor(c.name);
         rows += '<div class="color-override-row"><span style="font-size:0.8rem;min-width:110px;text-align:right;">' + U.escHtml(c.name) + '</span>' +
           '<input type="color" value="' + current + '" data-cat="' + U.escHtml(c.name) + '" />' +
-          (overrides[c.name] ? '<button class="btn btn-outline btn-sm" data-reset="' + U.escHtml(c.name) + '">reset</button>' : '') +
+          (Object.prototype.hasOwnProperty.call(overrides, c.name) ? '<button class="btn btn-outline btn-sm" data-reset="' + U.escHtml(c.name) + '">reset</button>' : '') +
           '</div>';
       });
       document.getElementById("category-colors").innerHTML =
@@ -530,6 +530,13 @@
           document.documentElement.removeAttribute("data-theme");
           localStorage.setItem("theme", "light");
         }
+        var appTheme = localStorage.getItem("appTheme") || "indigo";
+        if (appTheme === "custom") {
+          var hue = parseInt(localStorage.getItem("accentHue"), 10);
+          if (isNaN(hue) || hue < 0 || hue > 360) hue = 241;
+          applyAccentTheme("custom", hue);
+        }
+        renderPreview();
       });
 
       document.getElementById("tx-colors-toggle").addEventListener("change", function() {
@@ -587,7 +594,7 @@
         });
       });
 
-      document.getElementById("custom-accent-color").addEventListener("input", function() {
+      document.getElementById("custom-accent-color").addEventListener("change", function() {
         var hue = hexToHue(this.value);
         localStorage.setItem("accentHue", String(hue));
         applyAccentTheme("custom", hue);

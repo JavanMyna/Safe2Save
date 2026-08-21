@@ -87,7 +87,7 @@ var CAT = (function() {
 
   function colorFor(name) {
     var o = getOverrides();
-    if (o[name]) return o[name];
+    if (Object.prototype.hasOwnProperty.call(o, name)) return o[name];
     var palette = getPalette();
     for (var i = 0; i < defaults.length; i++) {
       if (defaults[i].name === name) return palette[i];
