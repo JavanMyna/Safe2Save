@@ -174,6 +174,8 @@ CSS usage is split accordingly:
 
 Indigo's *fill* stays `#6366F1` in both modes — zero change to filled controls for existing users. The one deliberate change: Indigo's dark-mode *foreground* moves from `#6366F1` (~4.05:1 against `#1A1A1A`, below AA) to `#7C9CFF` (~5.5:1). This is a small contrast fix, not a restyle, and it's the same value the code already hints at in the line-1486 fallback.
 
+**PR-description callout (required):** the Indigo dark-mode `--accent-fg` change (`#6366F1` → `#7C9CFF`) is user-visible and outside the grey-bug/palette feature scope. It ships deliberately as a contrast fix, but it must be called out as its own line in the PR description — not folded into the palette/accent feature summary — so it gets an explicit sign-off rather than riding through as a side effect of the two-variable split.
+
 ### Custom ("Your Colour") — pre-paint computation
 
 The stored value is a **hue integer 0–360** (`accentHue`), not a hex. It is resolved to concrete `--accent` and `--accent-fg` values in the **inline `<head>` snippet**, synchronously, before first paint — same treatment the existing light/dark snippet already gives. No FOUC.
@@ -191,11 +193,10 @@ accentFor(hue, mode, role):
   dark, role == fg:
     // accent text sits on the #1A1A1A surface
     L = 60; while contrast(hsl(hue,65%,L), #1A1A1A) < 4.5: L += 2   // ceiling 78
-```
+The loops terminate inside the stated bounds for all hues 0–360: at the floor/ceiling the contrast target is already exceeded (e.g. `hsl(60,65%,24%)` dark-olive ≈7:1 vs white; `hsl(240,65%,78%)` light-blue ≈9:1 vs `#1A1A1A`). The floor/ceiling are safety clamps, not the operating point. **The floor/ceiling are asserted, not merely expected:** the helper's loop is bounded and ends with a hard clamp to the floor/ceiling (`L = max(min(L, ceiling), floor)`), so the return value is provably in-bounds even if the hand-derived worst-case reasoning were wrong for some hue. §8 item 7 extends the hue spread to assert this for all six test hues, both roles, both modes. The helper is a ~20-line pure function duplicated inside the head snippet (self-contained, no external deps).
 
-The loops terminate inside the stated bounds for all hues 0–360: at the floor/ceiling the contrast target is already exceeded (e.g. `hsl(60,65%,24%)` dark-olive ≈7:1 vs white; `hsl(240,65%,78%)` light-blue ≈9:1 vs `#1A1A1A`). The floor/ceiling are safety clamps, not the operating point. The helper is a ~20-line pure function duplicated inside the head snippet (self-contained, no external deps).
+The head snippet sets `data-accent="custom"` and writes the resolved hexes inline via `document.documentElement.style.setProperty("--accent", …)` / `("--accent-fg", …)`. No `[data-accent="custom"]` CSS rule is needed: when inline vars are absent (the no-JS case), the `data-accent="custom"` attribute also can't be set, so the cascade already resolves `--accent`/`--accent-fg` to Indigo via `:root`/`[data-theme="dark"]` — the intended fallback, without relying on an unstated selector-order assumption.
 
-The head snippet sets `data-accent="custom"` and writes the resolved hexes inline via `document.documentElement.style.setProperty("--accent", …)` / `("--accent-fg", …)`. The `[data-accent="custom"]` CSS rule provides only fallback values (indigo) for the no-JS/edge case; inline values win in normal operation.
 
 ### `::root` typo fix (targeted)
 
@@ -208,7 +209,7 @@ The head snippet sets `data-accent="custom"` and writes the resolved hexes inlin
 [data-theme="dark"]                     { --accent-fg: #7C9CFF; }  /* --accent stays #6366F1 */
 [data-accent="crimson"]                 { --accent: #C62828; --accent-fg: #C62828; }
 [data-accent="crimson"][data-theme="dark"] { --accent-fg: #EF5350; }
-[data-accent="custom"]                  { /* fallbacks; inline vars win */ }
+/* no [data-accent="custom"] rule — cascade falls back to Indigo; see §4 */
 ```
 
 ### Affected files
@@ -298,7 +299,7 @@ Run by serving the folder statically and checking in-browser (no test framework)
 4. **Override precedence** — set an override on "Food"; it wins over the palette everywhere (donut, legend, transaction rows, log chips). Reset it; it reverts to the palette color.
 5. **Accent live-switch** — switching Indigo/Crimson/Your Colour updates active tabs, chips, toggles, and FAB immediately with no reload; persists across reload.
 6. **Custom-hue FOUC** — set a custom hue, hard-reload dashboard: no flash of indigo/crimson before the custom accent paints (head snippet is synchronous).
-7. **Custom-hue contrast, both roles, both modes** — across a hue spread (0, 30, 55, 120, 200, 270): (a) `--accent` fill meets ≥4.5:1 vs `#ffffff` in light *and* dark (white text legible); (b) `--accent-fg` meets ≥4.5:1 vs `#ffffff` in light and ≥4.5:1 vs `#1A1A1A` in dark. Test both variables independently — one passing does not imply the other.
+7. **Custom-hue contrast + bounds, both roles, both modes** — across a hue spread (0, 30, 55, 120, 200, 270): (a) `--accent` fill meets ≥4.5:1 vs `#ffffff` in light *and* dark (white text legible); (b) `--accent-fg` meets ≥4.5:1 vs `#ffffff` in light and ≥4.5:1 vs `#1A1A1A` in dark; (c) the helper returns L within the stated floor/ceiling for all six hues, both roles, both modes (termination-within-bounds is asserted, not eyeballed). Test both variables independently — one passing does not imply the other.
 8. **Regression** — `computeRecommendation`, chart date-range alignment, and `isRealSpend`/spend-filtering are untouched; confirm the financial math and chart windows behave as before (no changes made to those code paths).
 
 ---
