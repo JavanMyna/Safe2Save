@@ -1,4 +1,4 @@
-# Safe-to-Save
+# Safe2Save
 
 A personal finance tracker for people with irregular income — built because I didn't want to hand my spending data to a subscription app just to see where my money goes.
 

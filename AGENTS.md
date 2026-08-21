@@ -1,10 +1,9 @@
 # Safe2Save — Agent Instructions
-
 Standing context for this project. Loaded automatically every Pi session — task-specific instructions belong in the brief pasted at the start of each session, not here.
 
 ## Project Overview
 
-Safe-to-Save is a personal finance tracker for people with irregular income. Core feature: given a manually entered bank balance, it calculates a "safe to save" amount — how much can be moved to savings without eating into the runway needed to cover upcoming spending. Static site, no build step, backed by Supabase (Postgres + Auth), hosted on GitHub Pages. Mobile is the primary target device.
+Safe2Save is a personal finance tracker for people with irregular income. Core feature: given a manually entered bank balance, it calculates a "safe to save" amount — how much can be moved to savings without eating into the runway needed to cover upcoming spending. Static site, no build step, backed by Supabase (Postgres + Auth), hosted on GitHub Pages. Mobile is the primary target device.
 
 ## Tech Stack
 
