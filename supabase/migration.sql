@@ -22,6 +22,11 @@
 --   alter table settings add column if not exists show_transaction_colors boolean not null default true;
 -- Phase 7: transaction edit/delete control mode (swipe/buttons/both)
 --   alter table settings add column if not exists transaction_controls text not null default 'both' constraint transaction_controls_check check (transaction_controls in ('swipe','buttons','both'));
+-- Phase 8: theming (app accent, category palette, per-category overrides)
+--   alter table settings add column if not exists app_theme text not null default 'indigo' check (app_theme in ('indigo','crimson','custom'));
+--   alter table settings add column if not exists accent_hue int;
+--   alter table settings add column if not exists category_palette text not null default 'triadic' check (category_palette in ('legacy','triadic','tetradic','square','forest','ocean','kawaii'));
+--   alter table settings add column if not exists category_color_overrides jsonb not null default '{}'::jsonb;
 -- ============================================================
 
 -- 1. Profiles table
