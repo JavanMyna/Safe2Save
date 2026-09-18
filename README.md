@@ -125,6 +125,9 @@ While AI helps speed up development, I still handle the debugging, verification 
 
 ---
 
+## Status: Paused 🚧
+This project is currently paused for updates and not usable in its current state. If you have existing data stored and need to retrieve it, please reach out.
+
 ## Author
 
 Built by [JavanMyna](https://github.com/JavanMyna).
